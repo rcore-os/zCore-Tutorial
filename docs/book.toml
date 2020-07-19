@@ -1,0 +1,6 @@
+[book]
+authors = ["Runji Wang"]
+language = "cn"
+multilingual = false
+src = "src"
+title = "简明 zCore 教程"
