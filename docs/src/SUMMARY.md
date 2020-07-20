@@ -1,6 +1,6 @@
 # 简明 zCore 教程
 
-[简明 zCore 教程](title-page.md)
+[简明 zCore 教程](README.md)
 [zCore 整体结构和设计模式](zcore-intro.md)
 [Fuchsia OS 和 Zircon 微内核](fuchsia.md)
 
