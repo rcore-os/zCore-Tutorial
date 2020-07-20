@@ -86,7 +86,7 @@ pub trait KernelObject: Send + Sync {
 接下来我们实现一个最简单的空对象 `DummyObject`，并为它实现 `KernelObject` 接口：
 
 ```rust,noplaypen
-{{#include ../../zcore/src/object/mod.rs:dummy_def}}
+{{#include ../../zcore/src/object/object_v1.rs:dummy_def}}
 ```
 
 这里我们采用一种[**内部可变性**]的设计模式：将对象的所有可变的部分封装到一个内部对象 `DummyObjectInner` 中，并在原对象中用自旋锁 [`Mutex`] 把它包起来，剩下的其它字段都是不可变的。
@@ -109,7 +109,7 @@ pub trait KernelObject: Send + Sync {
 然后我们为新对象实现构造函数：
 
 ```rust,noplaypen
-{{#include ../../zcore/src/object/mod.rs:dummy_new}}
+{{#include ../../zcore/src/object/object_v1.rs:dummy_new}}
 ```
 
 根据文档描述，每个内核对象都有唯一的 ID。为此我们需要实现一个全局的 ID 分配方法。这里采用的方法是用一个静态变量存放下一个待分配 ID 值，每次分配就原子地 +1。
@@ -120,7 +120,7 @@ ID 类型使用 `u64`，保证了数值空间足够大，在有生之年都不�
 最后我们为它实现 `KernelObject` 接口：
 
 ```rust,noplaypen
-{{#include ../../zcore/src/object/mod.rs:dummy_impl}}
+{{#include ../../zcore/src/object/object_v1.rs:dummy_impl}}
 ```
 
 到此为止，我们已经迈出了万里长征第一步，实现了一个最简单的功能。有实现，就要有测试！即使最简单的代码也要保证它的行为符合我们预期。
@@ -129,7 +129,7 @@ ID 类型使用 `u64`，保证了数值空间足够大，在有生之年都不�
 为了证明上面代码的正确性，我们写一个简单的单元测试，替换掉自带的 `it_works` 函数：
 
 ```rust,noplaypen
-{{#include ../../zcore/src/object/mod.rs:dummy_test}}
+{{#include ../../zcore/src/object/object_v1.rs:dummy_test}}
 ```
 
 ```sh
@@ -206,7 +206,7 @@ impl_downcast!(sync KernelObject);
 `impl_downcast!` 宏用来帮我们自动生成转换函数，然后就可以用 `downcast_arc` 来对 `Arc` 做向下转换了。我们直接来测试一把：
 
 ```rust,noplaypen
-{{#include ../../zcore/src/object/mod.rs:downcast_test}}
+{{#include ../../zcore/src/object/object_v1.rs:downcast_test}}
 ```
 
 ```sh
@@ -219,18 +219,86 @@ test object::downcast ... ok
 test object::tests::dummy_object ... ok
 ```
 
-## 用宏自动生成 `impl KernelObject` 模板代码
+## 模拟继承：用宏自动生成接口实现代码
 
-传统 OOP 语言都支持 **继承（inheritance）** 功能：子类 B 可以继承父类 A，然后自动拥有父类的所有字段和方法。
+上面我们已经完整实现了一个内核对象，代码看起来很简洁。但当我们要实现更多对象的时候，就会发现一个问题：
+这些对象拥有一些公共属性，接口方法也有共同的实现。
+在传统 OOP 语言中，我们通常使用 **继承（inheritance）** 来复用这些公共代码：子类 B 可以继承父类 A，然后自动拥有父类的所有字段和方法。
+
+继承是一个很强大的功能，但在长期实践中人们也逐渐发现了它的弊端。有兴趣的读者可以看一看知乎上的探讨：[*面向对象编程的弊端是什么？*]。
+经典著作《设计模式》中就鼓励大家**使用组合代替继承**。而一些现代的编程语言，如 Go 和 Rust，甚至直接抛弃了继承。在 Rust 中，通常使用组合结构和 [`Deref`] trait 来部分模拟继承。
+
+[*面向对象编程的弊端是什么？*]: https://www.zhihu.com/question/20275578/answer/26577791
+[`Deref`]: https://kaisery.github.io/trpl-zh-cn/ch15-02-deref.html
 
 > 继承野蛮，trait 文明。 —— 某 Rust 爱好者
 
+接下来我们模仿 `downcast-rs` 库的做法，使用一种基于宏的代码生成方案，来实现 `KernelObject` 的继承。
+当然这只是抛砖引玉，如果读者自己实现了，或者了解到社区中有更好的解决方案，也欢迎指出。
+
+具体做法是这样的：
+
+- 使用一个 struct 来提供所有的公共属性和方法，作为所有子类的第一个成员。
+- 为子类实现 trait 接口，所有方法直接委托给内部 struct 完成。这部分使用宏来自动生成模板代码。
+
+而所谓的内部 struct，其实就是我们上面实现的 `DummyObject`。为了更好地体现它的功能，我们给他改个名叫 `KObjectBase`：
+
 ```rust,noplaypen
-{{#include ../../zcore/src/object/mod.rs:base}}
+{{#include ../../zcore/src/object/mod.rs:base_def}}
+```
+
+接下来我们把它的构造函数改为实现 `Default` trait，并且公共属性和方法都指定为 `pub`：
+
+```rust,noplaypen
+{{#include ../../zcore/src/object/mod.rs:base_default}}
+impl KObjectBase {
+    /// 生成一个唯一的 ID
+    fn new_koid() -> KoID {...}
+    /// 获取对象名称
+    pub fn name(&self) -> String {...}
+    /// 设置对象名称
+    pub fn set_name(&self, name: &str) {...}
+}
+```
+
+最后来写一个魔法的宏！
+
+```rust,noplaypen
+{{#include ../../zcore/src/object/mod.rs:impl_kobject}}
+```
+
+轮子已经造好了！让我们看看如何用它方便地实现一个内核对象，仍以 `DummyObject` 为例：
+
+```rust,noplaypen
+{{#include ../../zcore/src/object/mod.rs:dummy}}
+```
+
+是不是方便了很多？最后按照惯例，用单元测试检验实现的正确性：
+
+```rust,noplaypen
+{{#include ../../zcore/src/object/mod.rs:dummy_test}}
+```
+
+有兴趣的读者可以继续探索使用功能更强大的 **过程宏（proc_macro）**，进一步简化实现新内核对象所需的模板代码。
+如果能把上面的代码块缩小成下面这两行，就更加完美了：
+
+```rust,noplaypen
+#[KernelObject]
+pub struct DummyObject;
 ```
 
 ## 总结
 
-关于 Rust 的面向对象特性，可以参考[官方文档]。
+在这一节中我们用 Rust 语言实现了 Zircon 最核心的**内核对象**概念。在此过程中涉及到 Rust 的一系列语言特性和设计模式：
 
-[官方文档]: https://kaisery.github.io/trpl-zh-cn/ch17-00-oop.html
+- 使用 **trait** 实现接口
+- 使用 **内部可变性** 模式实现并发对象
+- 基于社区解决方案实现 trait 到 struct 的 **向下转换**
+- 使用组合模拟继承，并使用 **宏** 实现模板代码的自动生成
+
+由于 Rust 独特的[面向对象编程特性]，我们在实现内核对象的过程中遇到了一定的挑战。
+不过万事开头难，解决这些问题为整个项目打下了坚实基础，后面实现新的内核对象就会变得简单很多。
+
+[面向对象编程特性]: https://kaisery.github.io/trpl-zh-cn/ch17-00-oop.html
+
+在下一节中，我们将介绍内核对象相关的另外两个概念：句柄和权限，并实现内核对象的存储和访问。
