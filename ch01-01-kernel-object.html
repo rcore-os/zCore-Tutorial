@@ -1,0 +1,580 @@
+<!DOCTYPE HTML>
+<html lang="cn" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>初识内核对象 - 简明 zCore 教程</title>
+        
+        
+
+
+        <!-- Custom HTML head -->
+        
+
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        
+        <link rel="stylesheet" href="fonts/fonts.css">
+        
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">简明 zCore 教程</a></li><li class="chapter-item expanded affix "><a href="zcore-intro.html">zCore 整体结构和设计模式</a></li><li class="chapter-item expanded affix "><a href="fuchsia.html">Fuchsia OS 和 Zircon 微内核</a></li><li class="chapter-item expanded "><a href="ch01-00-object.html"><strong aria-hidden="true">1.</strong> 内核对象</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch01-01-kernel-object.html" class="active"><strong aria-hidden="true">1.1.</strong> 初识内核对象</a></li><li class="chapter-item expanded "><a href="ch01-02-process-object.html"><strong aria-hidden="true">1.2.</strong> 对象管理器：Process 对象</a></li><li class="chapter-item expanded "><a href="ch01-03-channel-object.html"><strong aria-hidden="true">1.3.</strong> 对象传送器：Channel 对象</a></li></ol></li><li class="chapter-item expanded "><a href="ch02-00-task.html"><strong aria-hidden="true">2.</strong> 任务管理</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch02-01-zircon-task.html"><strong aria-hidden="true">2.1.</strong> Zircon 任务管理体系</a></li><li class="chapter-item expanded "><a href="ch02-02-hal-async.html"><strong aria-hidden="true">2.2.</strong> 硬件抽象层与异步运行时</a></li><li class="chapter-item expanded "><a href="ch02-03-thread-object.html"><strong aria-hidden="true">2.3.</strong> 线程管理：Thread 对象</a></li><li class="chapter-item expanded "><a href="ch02-04-process-job-object.html"><strong aria-hidden="true">2.4.</strong> 进程管理：Process 与 Job 对象</a></li></ol></li><li class="chapter-item expanded "><a href="ch03-00-memory.html"><strong aria-hidden="true">3.</strong> 内存管理</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch03-01-zircon-memory.html"><strong aria-hidden="true">3.1.</strong> Zircon 内存管理模型</a></li><li class="chapter-item expanded "><a href="ch03-02-vmo.html"><strong aria-hidden="true">3.2.</strong> 物理内存：VMO 对象</a></li><li class="chapter-item expanded "><a href="ch03-03-vmar.html"><strong aria-hidden="true">3.3.</strong> 虚拟内存：VMAR 对象</a></li></ol></li><li class="chapter-item expanded "><a href="ch04-00-userspace.html"><strong aria-hidden="true">4.</strong> 用户程序</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch04-01-user-program.html"><strong aria-hidden="true">4.1.</strong> Zircon 用户程序</a></li><li class="chapter-item expanded "><a href="ch04-02-load-elf.html"><strong aria-hidden="true">4.2.</strong> 加载 ELF 文件</a></li><li class="chapter-item expanded "><a href="ch04-03-context-switch.html"><strong aria-hidden="true">4.3.</strong> 上下文切换</a></li><li class="chapter-item expanded "><a href="ch04-04-syscall.html"><strong aria-hidden="true">4.4.</strong> 系统调用</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        
+                    </div>
+
+                    <h1 class="menu-title">简明 zCore 教程</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1><a class="header" href="#初识内核对象" id="初识内核对象">初识内核对象</a></h1>
+<h2><a class="header" href="#内核对象简介" id="内核对象简介">内核对象简介</a></h2>
+<p>TODO</p>
+<p>详细内容可参考 Fuchsia 官方文档：<a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects.md">内核对象</a>。</p>
+<p>在这一节中我们将在 Rust 中实现内核对象的概念。</p>
+<h2><a class="header" href="#建立项目" id="建立项目">建立项目</a></h2>
+<p>首先我们需要安装 Rust 工具链。在 Linux 或 macOS 系统下，只需要用一个命令下载安装 rustup 即可：</p>
+<pre><code class="language-sh">$ curl https://sh.rustup.rs -sSf | sh
+</code></pre>
+<p>具体安装方法可以参考<a href="https://kaisery.github.io/trpl-zh-cn/ch01-01-installation.html">官方文档</a>。</p>
+<p>接下来我们用 cargo 创建一个 Rust 库项目：</p>
+<pre><code class="language-sh">$ cargo new --lib zcore
+$ cd zcore
+</code></pre>
+<p>我们将在这个 crate 中实现所有的内核对象，以库（lib）而不是可执行文件（bin）的形式组织代码，后面我们会依赖单元测试保证代码的正确性。</p>
+<p>由于我们会用到一些不稳定（unstable）的语言特性，需要使用 nightly 版本的工具链。在项目根目录下创建一个 <code>rust-toolchain</code> 文件，指明使用的工具链版本：</p>
+<pre><code class="language-sh">nightly-2020-06-04
+</code></pre>
+<p>这个程序库目前是在你的 Linux 或 macOS 上运行，但有朝一日它会成为一个真正的 OS 在裸机上运行。
+为此我们需要移除对标准库的依赖，使其成为一个不依赖当前 OS 功能的库。在 <code>lib.rs</code> 的第一行添加声明：</p>
+<pre><code class="language-rust noplaypen">#![no_std]
+extern crate alloc;
+</code></pre>
+<p>现在我们可以尝试运行一下自带的单元测试，编译器可能会自动下载并安装工具链：</p>
+<pre><code class="language-sh">$ cargo test
+    Finished test [unoptimized + debuginfo] target(s) in 0.52s
+     Running target/debug/deps/zcore-dc6d43637bc5df7a
+
+running 1 test
+test tests::it_works ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+</code></pre>
+<h2><a class="header" href="#实现-kernelobject-接口" id="实现-kernelobject-接口">实现 KernelObject 接口</a></h2>
+<p>所有的内核对象有一系列共同的属性和方法，我们称这些方法为对象的公共<strong>接口（Interface）</strong>。
+同一种方法在不同类型的对象中可能会有不同的行为，在面向对象语言中我们称其为<strong>多态（Polymorphism）</strong>。</p>
+<p>Rust 是一门部分面向对象的语言，我们通常用它的 trait 实现接口和多态。</p>
+<p>首先创建一个 <code>KernelObject</code> trait 作为内核对象的公共接口：</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// 内核对象公共接口
+pub trait KernelObject: Send + Sync {
+    /// 获取对象 ID
+    fn id(&amp;self) -&gt; KoID;
+    /// 获取对象类型名
+    fn type_name(&amp;self) -&gt; &amp;str;
+    /// 获取对象名称
+    fn name(&amp;self) -&gt; String;
+    /// 设置对象名称
+    fn set_name(&amp;self, name: &amp;str);
+}
+
+/// 对象 ID 类型
+pub type KoID = u64;
+<span class="boring">}
+</span></code></pre></pre>
+<p>这里的 <a href="https://kaisery.github.io/trpl-zh-cn/ch16-04-extensible-concurrency-sync-and-send.html"><code>Send + Sync</code></a> 是一个约束所有 <code>KernelObject</code> 都要满足的前提条件，即它必须是一个<strong>并发对象</strong>。
+所谓并发对象指的是<strong>可以安全地被多线程共享访问</strong>。事实上我们的内核本身就是一个共享地址空间的多线程程序，在裸机上每个 CPU 核都可以被视为一个并发执行的线程。
+由于内核对象可能被多个线程同时访问，因此它必须是并发对象。</p>
+<h2><a class="header" href="#实现一个空对象" id="实现一个空对象">实现一个空对象</a></h2>
+<p>接下来我们实现一个最简单的空对象 <code>DummyObject</code>，并为它实现 <code>KernelObject</code> 接口：</p>
+<pre><code class="language-rust noplaypen">use spin::Mutex;
+
+/// 空对象
+#[derive(Debug)]
+pub struct DummyObject {
+    id: KoID,
+    inner: Mutex&lt;DummyObjectInner&gt;,
+}
+
+/// `DummyObject` 的内部可变部分
+#[derive(Default, Debug)]
+struct DummyObjectInner {
+    name: String,
+}
+</code></pre>
+<p>这里我们采用一种<a href="https://kaisery.github.io/trpl-zh-cn/ch15-05-interior-mutability.html"><strong>内部可变性</strong></a>的设计模式：将对象的所有可变的部分封装到一个内部对象 <code>DummyObjectInner</code> 中，并在原对象中用自旋锁 <a href="https://docs.rs/spin/0.5.2/spin/struct.Mutex.html"><code>Mutex</code></a> 把它包起来，剩下的其它字段都是不可变的。
+<code>Mutex</code> 会用最简单的方式帮我们处理好并发访问问题：如果有其他人正在访问，我就在这里死等。
+数据被 <code>Mutex</code> 包起来之后需要首先使用 <a href="https://docs.rs/spin/0.5.2/spin/struct.Mutex.html#method.lock"><code>lock()</code></a> 拿到锁之后才能访问。此时并发访问已经安全，因此被包起来的结构自动具有了 <code>Send + Sync</code> 特性。</p>
+<p>使用自旋锁引入了新的依赖库 <a href="https://docs.rs/spin/0.5.2/spin/index.html"><code>spin</code></a> ，需要在 <code>Cargo.toml</code> 中加入以下声明：</p>
+<pre><code class="language-toml">[dependencies]
+spin = &quot;0.5&quot;
+</code></pre>
+<p>然后我们为新对象实现构造函数：</p>
+<pre><code class="language-rust noplaypen">use alloc::sync::Arc;
+use core::sync::atomic::*;
+
+impl DummyObject {
+    /// 创建一个新 `DummyObject`
+    pub fn new() -&gt; Arc&lt;Self&gt; {
+        Arc::new(DummyObject {
+            id: Self::new_koid(),
+            inner: Default::default(),
+        })
+    }
+
+    /// 生成一个唯一的 ID
+    fn new_koid() -&gt; KoID {
+        static NEXT_KOID: AtomicU64 = AtomicU64::new(1024);
+        NEXT_KOID.fetch_add(1, Ordering::SeqCst)
+    }
+}
+</code></pre>
+<p>根据文档描述，每个内核对象都有唯一的 ID。为此我们需要实现一个全局的 ID 分配方法。这里采用的方法是用一个静态变量存放下一个待分配 ID 值，每次分配就原子地 +1。
+ID 类型使用 <code>u64</code>，保证了数值空间足够大，在有生之年都不用担心溢出问题。在 Zircon 中 ID 从 1024 开始分配，1024 以下保留作内核内部使用。</p>
+<p>另外注意这里 <code>new</code> 函数返回类型不是 <code>Self</code> 而是 <code>Arc&lt;Self&gt;</code>，这是为了以后方便而做的统一约定。</p>
+<p>最后我们为它实现 <code>KernelObject</code> 接口：</p>
+<pre><code class="language-rust noplaypen">impl KernelObject for DummyObject {
+    fn id(&amp;self) -&gt; KoID {
+        self.id
+    }
+    fn type_name(&amp;self) -&gt; &amp;str {
+        &quot;DummyObject&quot;
+    }
+    fn name(&amp;self) -&gt; String {
+        self.inner.lock().name.clone()
+    }
+    fn set_name(&amp;self, name: &amp;str) {
+        self.inner.lock().name = String::from(name);
+    }
+}
+</code></pre>
+<p>到此为止，我们已经迈出了万里长征第一步，实现了一个最简单的功能。有实现，就要有测试！即使最简单的代码也要保证它的行为符合我们预期。
+只有对现有代码进行充分测试，在未来做添加和修改的时候，我们才有信心不会把事情搞砸。俗话讲&quot;万丈高楼平地起&quot;，把地基打好才能盖摩天大楼。</p>
+<p>为了证明上面代码的正确性，我们写一个简单的单元测试，替换掉自带的 <code>it_works</code> 函数：</p>
+<pre><code class="language-rust noplaypen">#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn dummy_object() {
+        let o1 = DummyObject::new();
+        let o2 = DummyObject::new();
+        assert_ne!(o1.id(), o2.id());
+        assert_eq!(o1.type_name(), &quot;DummyObject&quot;);
+        assert_eq!(o1.name(), &quot;&quot;);
+        o1.set_name(&quot;object1&quot;);
+        assert_eq!(o1.name(), &quot;object1&quot;);
+    }
+}
+</code></pre>
+<pre><code class="language-sh">$ cargo test
+    Finished test [unoptimized + debuginfo] target(s) in 0.53s
+     Running target/debug/deps/zcore-ae1be84852989b13
+
+running 1 test
+test tests::dummy_object ... ok
+</code></pre>
+<p>大功告成！让我们用 <code>cargo fmt</code> 命令格式化一下代码，然后记得 <code>git commit</code> 及时保存进展。</p>
+<h2><a class="header" href="#实现接口到具体类型的向下转换" id="实现接口到具体类型的向下转换">实现接口到具体类型的向下转换</a></h2>
+<p>在系统调用中，用户进程会传入一个内核对象的句柄，然后内核会根据系统调用的类型，尝试将其转换成特定类型的对象。
+于是这里产生了一个很重要的需求：将接口 <code>Arc&lt;dyn KernelObject&gt;</code> 转换成具体类型的结构 <code>Arc&lt;T&gt; where T: KernelObject</code>。
+这种操作在面向对象语言中称为<strong>向下转换（downcast）</strong>。</p>
+<p>在大部分编程语言中，向下转换都是一件非常轻松的事情。例如在 C/C++ 中，我们可以这样写：</p>
+<pre><code class="language-c++">struct KernelObject {...};
+struct DummyObject: KernelObject {...};
+
+KernelObject *base = ...;
+// C 风格：强制类型转换
+DummyObject *dummy = (DummyObject*)(base);
+// C++ 风格：动态类型转换
+DummyObject *dummy = dynamic_cast&lt;DummyObject*&gt;(base);
+</code></pre>
+<p>但在 Rust 中，由于其 trait 模型的限制，向下转换并不是一件容易的事情。
+虽然标准库中提供了 <a href="https://doc.rust-lang.org/std/any/"><code>Any</code></a> trait，部分实现了动态类型的功能，但实际操作起来却困难重重。
+不信邪的同学可以自己折腾一下：</p>
+<pre><pre class="playground"><code class="language-rust editable">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">use std::any::Any;
+</span><span class="boring">use std::sync::Arc;
+</span>trait KernelObject: Any + Send + Sync {}
+fn downcast_v1&lt;T: KernelObject&gt;(object: Arc&lt;dyn KernelObject&gt;) -&gt; Arc&lt;T&gt; {
+    object.downcast::&lt;T&gt;().unwrap()
+}
+fn downcast_v2&lt;T: KernelObject&gt;(object: Arc&lt;dyn KernelObject&gt;) -&gt; Arc&lt;T&gt; {
+    let object: Arc&lt;dyn Any + Send + Sync + 'static&gt; = object;
+    object.downcast::&lt;T&gt;().unwrap()
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>当然这个问题也困扰了 Rust 社区中的很多人。目前已经有人提出了一套不错的解决方案，就是我们接下来要引入的 <a href="https://docs.rs/downcast-rs/1.2.0/downcast_rs/index.html"><code>downcast-rs</code></a> 库：</p>
+<pre><code class="language-toml">[dependencies]
+downcast-rs = { version = &quot;1.2.0&quot;, default-features = false }
+</code></pre>
+<p>（题外话：这个库原来是不支持 no_std 的，zCore 有这个需求，于是就顺便帮他实现了一把）</p>
+<p>按照它文档的描述，我们要为自己的接口实现向下转换，只需以下修改：</p>
+<pre><code class="language-rust noplaypen">use core::fmt::Debug;
+use downcast_rs::{impl_downcast, DowncastSync};
+
+pub trait KernelObject: DowncastSync + Debug {...}
+impl_downcast!(sync KernelObject);
+</code></pre>
+<p>其中 <code>DowncastSync</code> 代替了原来的 <code>Send + Sync</code>，<code>Debug</code> 用于出错时输出调试信息。
+<code>impl_downcast!</code> 宏用来帮我们自动生成转换函数，然后就可以用 <code>downcast_arc</code> 来对 <code>Arc</code> 做向下转换了。我们直接来测试一把：</p>
+<pre><code class="language-rust noplaypen">#[test]
+fn downcast() {
+    let dummy = DummyObject::new();
+    let object: Arc&lt;dyn KernelObject&gt; = dummy;
+    let _result: Arc&lt;DummyObject&gt; = object.downcast_arc::&lt;DummyObject&gt;().unwrap();
+}
+</code></pre>
+<pre><code class="language-sh">$ cargo test
+    Finished test [unoptimized + debuginfo] target(s) in 0.47s
+     Running target/debug/deps/zcore-ae1be84852989b13
+
+running 2 tests
+test object::downcast ... ok
+test object::tests::dummy_object ... ok
+</code></pre>
+<h2><a class="header" href="#模拟继承用宏自动生成接口实现代码" id="模拟继承用宏自动生成接口实现代码">模拟继承：用宏自动生成接口实现代码</a></h2>
+<p>上面我们已经完整实现了一个内核对象，代码看起来很简洁。但当我们要实现更多对象的时候，就会发现一个问题：
+这些对象拥有一些公共属性，接口方法也有共同的实现。
+在传统 OOP 语言中，我们通常使用 <strong>继承（inheritance）</strong> 来复用这些公共代码：子类 B 可以继承父类 A，然后自动拥有父类的所有字段和方法。</p>
+<p>继承是一个很强大的功能，但在长期实践中人们也逐渐发现了它的弊端。有兴趣的读者可以看一看知乎上的探讨：<a href="https://www.zhihu.com/question/20275578/answer/26577791"><em>面向对象编程的弊端是什么？</em></a>。
+经典著作《设计模式》中就鼓励大家<strong>使用组合代替继承</strong>。而一些现代的编程语言，如 Go 和 Rust，甚至直接抛弃了继承。在 Rust 中，通常使用组合结构和 <a href="https://kaisery.github.io/trpl-zh-cn/ch15-02-deref.html"><code>Deref</code></a> trait 来部分模拟继承。</p>
+<blockquote>
+<p>继承野蛮，trait 文明。 —— 某 Rust 爱好者</p>
+</blockquote>
+<p>接下来我们模仿 <code>downcast-rs</code> 库的做法，使用一种基于宏的代码生成方案，来实现 <code>KernelObject</code> 的继承。
+当然这只是抛砖引玉，如果读者自己实现了，或者了解到社区中有更好的解决方案，也欢迎指出。</p>
+<p>具体做法是这样的：</p>
+<ul>
+<li>使用一个 struct 来提供所有的公共属性和方法，作为所有子类的第一个成员。</li>
+<li>为子类实现 trait 接口，所有方法直接委托给内部 struct 完成。这部分使用宏来自动生成模板代码。</li>
+</ul>
+<p>而所谓的内部 struct，其实就是我们上面实现的 <code>DummyObject</code>。为了更好地体现它的功能，我们给他改个名叫 <code>KObjectBase</code>：</p>
+<pre><code class="language-rust noplaypen">/// 内核对象核心结构
+pub struct KObjectBase {
+    /// 对象 ID
+    pub id: KoID,
+    inner: Mutex&lt;KObjectBaseInner&gt;,
+}
+
+/// `KObjectBase` 的内部可变部分
+#[derive(Default)]
+struct KObjectBaseInner {
+    name: String,
+}
+</code></pre>
+<p>接下来我们把它的构造函数改为实现 <code>Default</code> trait，并且公共属性和方法都指定为 <code>pub</code>：</p>
+<pre><code class="language-rust noplaypen">impl Default for KObjectBase {
+    /// 创建一个新 `KObjectBase`
+    fn default() -&gt; Self {
+        KObjectBase {
+            id: Self::new_koid(),
+            inner: Default::default(),
+        }
+    }
+}
+impl KObjectBase {
+    /// 生成一个唯一的 ID
+    fn new_koid() -&gt; KoID {...}
+    /// 获取对象名称
+    pub fn name(&amp;self) -&gt; String {...}
+    /// 设置对象名称
+    pub fn set_name(&amp;self, name: &amp;str) {...}
+}
+</code></pre>
+<p>最后来写一个魔法的宏！</p>
+<pre><code class="language-rust noplaypen">/// 为内核对象 struct 自动实现 `KernelObject` trait 的宏。
+#[macro_export] // 导出宏，可在 crate 外部使用
+macro_rules! impl_kobject {
+    // 匹配类型名，并可以提供函数覆盖默认实现
+    ($class:ident $( $fn:tt )*) =&gt; {
+        // 为对象实现 KernelObject trait，方法直接转发到内部 struct
+        impl KernelObject for $class {
+            fn id(&amp;self) -&gt; KoID {
+                // 直接访问内部的 pub 属性
+                self.base.id
+            }
+            fn type_name(&amp;self) -&gt; &amp;str {
+                // 用 stringify! 宏将输入转成字符串
+                stringify!($class)
+            }
+            // 注意宏里面的类型要写完整路径，例如：alloc::string::String
+            fn name(&amp;self) -&gt; alloc::string::String {
+                self.base.name()
+            }
+            fn set_name(&amp;self, name: &amp;str){
+                // 直接访问内部的 pub 方法
+                self.base.set_name(name)
+            }
+            // 可以传入任意数量的函数，覆盖 trait 的默认实现
+            $( $fn )*
+        }
+        // 为对象实现 Debug trait
+        impl core::fmt::Debug for $class {
+            fn fmt(
+                &amp;self,
+                f: &amp;mut core::fmt::Formatter&lt;'_&gt;,
+            ) -&gt; core::result::Result&lt;(), core::fmt::Error&gt; {
+                // 输出对象类型、ID 和名称
+                f.debug_tuple(&amp;stringify!($class))
+                    .field(&amp;self.id())
+                    .field(&amp;self.name())
+                    .finish()
+            }
+        }
+    };
+}
+</code></pre>
+<p>轮子已经造好了！让我们看看如何用它方便地实现一个内核对象，仍以 <code>DummyObject</code> 为例：</p>
+<pre><code class="language-rust noplaypen">/// 空对象
+pub struct DummyObject {
+    // 其中必须包含一个名为 `base` 的 `KObjectBase`
+    base: KObjectBase,
+}
+
+// 使用刚才的宏，声明其为内核对象，自动生成必要的代码
+impl_kobject!(DummyObject);
+
+impl DummyObject {
+    /// 创建一个新 `DummyObject`
+    pub fn new() -&gt; Arc&lt;Self&gt; {
+        Arc::new(DummyObject {
+            base: KObjectBase::default(),
+        })
+    }
+}
+</code></pre>
+<p>是不是方便了很多？最后按照惯例，用单元测试检验实现的正确性：</p>
+<pre><code class="language-rust noplaypen">#[test]
+fn impl_kobject() {
+    use alloc::format;
+    let dummy = DummyObject::new();
+    let object: Arc&lt;dyn KernelObject&gt; = dummy;
+    assert_eq!(object.type_name(), &quot;DummyObject&quot;);
+    assert_eq!(object.name(), &quot;&quot;);
+    object.set_name(&quot;dummy&quot;);
+    assert_eq!(object.name(), &quot;dummy&quot;);
+    assert_eq!(
+        format!(&quot;{:?}&quot;, object),
+        format!(&quot;DummyObject({}, \&quot;dummy\&quot;)&quot;, object.id())
+    );
+    let _result: Arc&lt;DummyObject&gt; = object.downcast_arc::&lt;DummyObject&gt;().unwrap();
+}
+</code></pre>
+<p>有兴趣的读者可以继续探索使用功能更强大的 <strong>过程宏（proc_macro）</strong>，进一步简化实现新内核对象所需的模板代码。
+如果能把上面的代码块缩小成下面这两行，就更加完美了：</p>
+<pre><code class="language-rust noplaypen">#[KernelObject]
+pub struct DummyObject;
+</code></pre>
+<h2><a class="header" href="#总结" id="总结">总结</a></h2>
+<p>在这一节中我们用 Rust 语言实现了 Zircon 最核心的<strong>内核对象</strong>概念。在此过程中涉及到 Rust 的一系列语言特性和设计模式：</p>
+<ul>
+<li>使用 <strong>trait</strong> 实现接口</li>
+<li>使用 <strong>内部可变性</strong> 模式实现并发对象</li>
+<li>基于社区解决方案实现 trait 到 struct 的 <strong>向下转换</strong></li>
+<li>使用组合模拟继承，并使用 <strong>宏</strong> 实现模板代码的自动生成</li>
+</ul>
+<p>由于 Rust 独特的<a href="https://kaisery.github.io/trpl-zh-cn/ch17-00-oop.html">面向对象编程特性</a>，我们在实现内核对象的过程中遇到了一定的挑战。
+不过万事开头难，解决这些问题为整个项目打下了坚实基础，后面实现新的内核对象就会变得简单很多。</p>
+<p>在下一节中，我们将介绍内核对象相关的另外两个概念：句柄和权限，并实现内核对象的存储和访问。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="ch01-00-object.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="ch01-02-process-object.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a rel="prev" href="ch01-00-object.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a rel="next" href="ch01-02-process-object.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>
