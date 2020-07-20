@@ -4,13 +4,11 @@
 
 TODO
 
-详细内容可参考 Fuchsia 官方文档：[内核对象]，[句柄]，[权限]。
+详细内容可参考 Fuchsia 官方文档：[内核对象]。
 
-在这一节中我们将在 Rust 中实现以上三个概念。
+在这一节中我们将在 Rust 中实现内核对象的概念。
 
 [内核对象]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects.md
-[句柄]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/handles.md
-[权限]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/rights.md
 
 ## 建立项目
 
@@ -60,9 +58,7 @@ test tests::it_works ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
 
-## 内核对象 KernelObject
-
-### 实现 KernelObject 接口
+## 实现 KernelObject 接口
 
 所有的内核对象有一系列共同的属性和方法，我们称这些方法为对象的公共**接口（Interface）**。
 同一种方法在不同类型的对象中可能会有不同的行为，在面向对象语言中我们称其为**多态（Polymorphism）**。
@@ -72,6 +68,8 @@ Rust 是一门部分面向对象的语言，我们通常用它的 trait 实现�
 首先创建一个 `KernelObject` trait 作为内核对象的公共接口：
 
 ```rust
+/// 内核对象公共接口
+pub trait KernelObject: Send + Sync {
 {{#include ../../zcore/src/object/mod.rs:object}}
 
 {{#include ../../zcore/src/object/mod.rs:koid}}
@@ -83,7 +81,7 @@ Rust 是一门部分面向对象的语言，我们通常用它的 trait 实现�
 
 [`Send + Sync`]: https://kaisery.github.io/trpl-zh-cn/ch16-04-extensible-concurrency-sync-and-send.html
 
-### 实现一个空对象
+## 实现一个空对象
 
 接下来我们实现一个最简单的空对象 `DummyObject`，并为它实现 `KernelObject` 接口：
 
@@ -145,21 +143,94 @@ test tests::dummy_object ... ok
 
 大功告成！让我们用 `cargo fmt` 命令格式化一下代码，然后记得 `git commit` 及时保存进展。
 
-### 实现接口到具体类型的向下转换
- 
+## 实现接口到具体类型的向下转换
+
+在系统调用中，用户进程会传入一个内核对象的句柄，然后内核会根据系统调用的类型，尝试将其转换成特定类型的对象。
+于是这里产生了一个很重要的需求：将接口 `Arc<dyn KernelObject>` 转换成具体类型的结构 `Arc<T> where T: KernelObject`。
+这种操作在面向对象语言中称为**向下转换（downcast）**。
+
+在大部分编程语言中，向下转换都是一件非常轻松的事情。例如在 C/C++ 中，我们可以这样写：
+
+```c++
+struct KernelObject {...};
+struct DummyObject: KernelObject {...};
+
+KernelObject *base = ...;
+// C 风格：强制类型转换
+DummyObject *dummy = (DummyObject*)(base);
+// C++ 风格：动态类型转换
+DummyObject *dummy = dynamic_cast<DummyObject*>(base);
+```
+
+但在 Rust 中，由于其 trait 模型的限制，向下转换并不是一件容易的事情。
+虽然标准库中提供了 [`Any`] trait，部分实现了动态类型的功能，但实际操作起来却困难重重。
+不信邪的同学可以自己折腾一下：
+
+[`Any`]: https://doc.rust-lang.org/std/any/
+
+```rust,editable
+#use std::any::Any;
+#use std::sync::Arc;
+trait KernelObject: Any + Send + Sync {}
+fn downcast_v1<T: KernelObject>(object: Arc<dyn KernelObject>) -> Arc<T> {
+    object.downcast::<T>().unwrap()
+}
+fn downcast_v2<T: KernelObject>(object: Arc<dyn KernelObject>) -> Arc<T> {
+    let object: Arc<dyn Any + Send + Sync + 'static> = object;
+    object.downcast::<T>().unwrap()
+}
+```
+
+当然这个问题也困扰了 Rust 社区中的很多人。目前已经有人提出了一套不错的解决方案，就是我们接下来要引入的 [`downcast-rs`] 库：
+
+[`downcast-rs`]: https://docs.rs/downcast-rs/1.2.0/downcast_rs/index.html
+
 ```toml
 [dependencies]
 {{#include ../../zcore/Cargo.toml:downcast}}
 ```
 
+（题外话：这个库原来是不支持 no_std 的，zCore 有这个需求，于是就顺便帮他实现了一把）
+
+按照它文档的描述，我们要为自己的接口实现向下转换，只需以下修改：
+
+```rust,noplaypen
+use core::fmt::Debug;
+use downcast_rs::{impl_downcast, DowncastSync};
+
+pub trait KernelObject: DowncastSync + Debug {...}
+impl_downcast!(sync KernelObject);
+```
+
+其中 `DowncastSync` 代替了原来的 `Send + Sync`，`Debug` 用于出错时输出调试信息。
+`impl_downcast!` 宏用来帮我们自动生成转换函数，然后就可以用 `downcast_arc` 来对 `Arc` 做向下转换了。我们直接来测试一把：
+
+```rust,noplaypen
+{{#include ../../zcore/src/object/mod.rs:downcast_test}}
+```
+
+```sh
+$ cargo test
+    Finished test [unoptimized + debuginfo] target(s) in 0.47s
+     Running target/debug/deps/zcore-ae1be84852989b13
+
+running 2 tests
+test object::downcast ... ok
+test object::tests::dummy_object ... ok
+```
+
+## 用宏自动生成 `impl KernelObject` 模板代码
+
+传统 OOP 语言都支持 **继承（inheritance）** 功能：子类 B 可以继承父类 A，然后自动拥有父类的所有字段和方法。
+
+> 继承野蛮，trait 文明。 —— 某 Rust 爱好者
+
 ```rust,noplaypen
 {{#include ../../zcore/src/object/mod.rs:base}}
 ```
 
+## 总结
+
 关于 Rust 的面向对象特性，可以参考[官方文档]。
 
 [官方文档]: https://kaisery.github.io/trpl-zh-cn/ch17-00-oop.html
-
-## 句柄 Handle
-
-## 权限 Rights

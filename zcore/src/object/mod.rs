@@ -1,10 +1,10 @@
 use alloc::string::String;
-// use core::fmt::Debug;
-// use downcast_rs::{impl_downcast, DowncastSync};
+use core::fmt::Debug;
+use downcast_rs::{impl_downcast, DowncastSync};
 
-// ANCHOR: object
 /// 内核对象公共接口
-pub trait KernelObject: Send + Sync {
+pub trait KernelObject: DowncastSync + Debug {
+    // ANCHOR: object
     /// 获取对象 ID
     fn id(&self) -> KoID;
     /// 获取对象类型名
@@ -16,6 +16,8 @@ pub trait KernelObject: Send + Sync {
 }
 // ANCHOR_END: object
 
+impl_downcast!(sync KernelObject);
+
 // ANCHOR: koid
 /// 对象 ID 类型
 pub type KoID = u64;
@@ -25,13 +27,14 @@ pub type KoID = u64;
 use spin::Mutex;
 
 /// 空对象
+#[derive(Debug)]
 pub struct DummyObject {
     id: KoID,
     inner: Mutex<DummyObjectInner>,
 }
 
 /// `DummyObject` 的内部可变部分
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct DummyObjectInner {
     name: String,
 }
@@ -83,8 +86,7 @@ mod tests {
     fn dummy_object() {
         let o1 = DummyObject::new();
         let o2 = DummyObject::new();
-        assert_eq!(o1.id(), 1024);
-        assert_eq!(o2.id(), 1025);
+        assert_ne!(o1.id(), o2.id());
         assert_eq!(o1.type_name(), "DummyObject");
         assert_eq!(o1.name(), "");
         o1.set_name("object1");
@@ -92,6 +94,16 @@ mod tests {
     }
 }
 // ANCHOR_END: dummy_test
+
+#[cfg(test)]
+// ANCHOR: downcast_test
+#[test]
+fn downcast() {
+    let dummy = DummyObject::new();
+    let object: Arc<dyn KernelObject> = dummy;
+    let _result: Arc<DummyObject> = object.downcast_arc::<DummyObject>().unwrap();
+}
+// ANCHOR_END: downcast_test
 
 // ANCHOR: base
 /// 内核对象核心结构
