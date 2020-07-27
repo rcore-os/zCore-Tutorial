@@ -41,6 +41,7 @@ $ cd zcore
 为此我们需要移除对标准库的依赖，使其成为一个不依赖当前 OS 功能的库。在 `lib.rs` 的第一行添加声明：
 
 ```rust,noplaypen
+// src/lib.rs
 #![no_std]
 extern crate alloc;
 ```
@@ -67,7 +68,8 @@ Rust 是一门部分面向对象的语言，我们通常用它的 trait 实现�
 
 首先创建一个 `KernelObject` trait 作为内核对象的公共接口：
 
-```rust
+```rust,noplaypen
+// src/object/mod.rs
 /// 内核对象公共接口
 pub trait KernelObject: Send + Sync {
 {{#include ../../zcore/src/object/mod.rs:object}}
@@ -86,6 +88,7 @@ pub trait KernelObject: Send + Sync {
 接下来我们实现一个最简单的空对象 `DummyObject`，并为它实现 `KernelObject` 接口：
 
 ```rust,noplaypen
+// src/object/object.rs
 {{#include ../../zcore/src/object/object_v1.rs:dummy_def}}
 ```
 
@@ -109,6 +112,7 @@ pub trait KernelObject: Send + Sync {
 然后我们为新对象实现构造函数：
 
 ```rust,noplaypen
+// src/object/object.rs
 {{#include ../../zcore/src/object/object_v1.rs:dummy_new}}
 ```
 
@@ -120,6 +124,7 @@ ID 类型使用 `u64`，保证了数值空间足够大，在有生之年都不�
 最后我们为它实现 `KernelObject` 接口：
 
 ```rust,noplaypen
+// src/object/object.rs
 {{#include ../../zcore/src/object/object_v1.rs:dummy_impl}}
 ```
 
@@ -129,6 +134,7 @@ ID 类型使用 `u64`，保证了数值空间足够大，在有生之年都不�
 为了证明上面代码的正确性，我们写一个简单的单元测试，替换掉自带的 `it_works` 函数：
 
 ```rust,noplaypen
+// src/object/object.rs
 {{#include ../../zcore/src/object/object_v1.rs:dummy_test}}
 ```
 
@@ -168,9 +174,10 @@ DummyObject *dummy = dynamic_cast<DummyObject*>(base);
 
 [`Any`]: https://doc.rust-lang.org/std/any/
 
-```rust,editable
-#use std::any::Any;
-#use std::sync::Arc;
+```rust,editable,noplaypen
+# use core::any::Any;
+# use alloc::sync::Arc;
+#
 trait KernelObject: Any + Send + Sync {}
 fn downcast_v1<T: KernelObject>(object: Arc<dyn KernelObject>) -> Arc<T> {
     object.downcast::<T>().unwrap()
@@ -190,11 +197,12 @@ fn downcast_v2<T: KernelObject>(object: Arc<dyn KernelObject>) -> Arc<T> {
 {{#include ../../zcore/Cargo.toml:downcast}}
 ```
 
-（题外话：这个库原来是不支持 no_std 的，zCore 有这个需求，于是就顺便帮他实现了一把）
+（题外话：这个库原来是不支持 `no_std` 的，zCore 有这个需求，于是就顺便帮他实现了一把）
 
 按照它文档的描述，我们要为自己的接口实现向下转换，只需以下修改：
 
 ```rust,noplaypen
+// src/object/mod.rs
 use core::fmt::Debug;
 use downcast_rs::{impl_downcast, DowncastSync};
 
@@ -206,6 +214,7 @@ impl_downcast!(sync KernelObject);
 `impl_downcast!` 宏用来帮我们自动生成转换函数，然后就可以用 `downcast_arc` 来对 `Arc` 做向下转换了。我们直接来测试一把：
 
 ```rust,noplaypen
+// src/object/object.rs
 {{#include ../../zcore/src/object/object_v1.rs:downcast_test}}
 ```
 
@@ -244,12 +253,14 @@ test object::tests::dummy_object ... ok
 而所谓的内部 struct，其实就是我们上面实现的 `DummyObject`。为了更好地体现它的功能，我们给他改个名叫 `KObjectBase`：
 
 ```rust,noplaypen
+// src/object/mod.rs
 {{#include ../../zcore/src/object/mod.rs:base_def}}
 ```
 
 接下来我们把它的构造函数改为实现 `Default` trait，并且公共属性和方法都指定为 `pub`：
 
 ```rust,noplaypen
+// src/object/mod.rs
 {{#include ../../zcore/src/object/mod.rs:base_default}}
 impl KObjectBase {
     /// 生成一个唯一的 ID
@@ -264,23 +275,28 @@ impl KObjectBase {
 最后来写一个魔法的宏！
 
 ```rust,noplaypen
+// src/object/mod.rs
 {{#include ../../zcore/src/object/mod.rs:impl_kobject}}
 ```
 
 轮子已经造好了！让我们看看如何用它方便地实现一个内核对象，仍以 `DummyObject` 为例：
 
 ```rust,noplaypen
+// src/object/mod.rs
 {{#include ../../zcore/src/object/mod.rs:dummy}}
 ```
 
 是不是方便了很多？最后按照惯例，用单元测试检验实现的正确性：
 
 ```rust,noplaypen
+// src/object/mod.rs
 {{#include ../../zcore/src/object/mod.rs:dummy_test}}
 ```
 
-有兴趣的读者可以继续探索使用功能更强大的 **过程宏（proc_macro）**，进一步简化实现新内核对象所需的模板代码。
+有兴趣的读者可以继续探索使用功能更强大的 [**过程宏（proc_macro）**]，进一步简化实现新内核对象所需的模板代码。
 如果能把上面的代码块缩小成下面这两行，就更加完美了：
+
+[**过程宏（proc_macro）**]: https://doc.rust-lang.org/proc_macro/index.html
 
 ```rust,noplaypen
 #[KernelObject]
