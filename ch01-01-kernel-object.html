@@ -157,9 +157,40 @@
                     <main>
                         <h1><a class="header" href="#初识内核对象" id="初识内核对象">初识内核对象</a></h1>
 <h2><a class="header" href="#内核对象简介" id="内核对象简介">内核对象简介</a></h2>
-<p>TODO</p>
-<p>详细内容可参考 Fuchsia 官方文档：<a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects.md">内核对象</a>。</p>
-<p>在这一节中我们将在 Rust 中实现内核对象的概念。</p>
+<p>在动手编写我们的代码之前，需要首先进行调研和学习，对目标对象有一个全面系统的了解。
+而了解一个项目设计的最好方式就是阅读官方提供的手册和文档。</p>
+<p>让我们先来阅读一下 Fuchsia 官方文档：<a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects.md">内核对象</a>。这个链接是社区翻译的中文版，已经有些年头了。如果读者能够科学上网，推荐直接阅读<a href="https://fuchsia.dev/fuchsia-src/reference/kernel_objects/objects">官方英文版</a>。</p>
+<p>通过阅读文档，我们了解到与内核对象相关的三个重要概念：<strong>对象（Object），句柄（Handle），权限（Rights）</strong>。它们在 Zircon 内核中的角色和关系如下图所示：</p>
+<p><img src="img/ch01-01-kernel-object.png" alt="" /></p>
+<p>简单来说：</p>
+<ul>
+<li>Zircon是一个基于对象的内核，内核资源被抽象封装在不同的 <strong>对象</strong> 中。</li>
+<li>用户程序通过 <strong>句柄</strong> 与内核交互。句柄是对某一对象的引用，并且附加了特定的 <strong>权限</strong>。</li>
+<li>对象通过 <strong>引用计数</strong> 管理生命周期。当最后一个句柄关闭时，对象随之销毁。</li>
+</ul>
+<p>此外在内核对象的文档中，还列举了一些<a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects.md#%E5%BA%94%E7%94%A8%E7%A8%8B%E5%BA%8F%E5%8F%AF%E7%94%A8%E7%9A%84%E5%86%85%E6%A0%B8%E5%AF%B9%E8%B1%A1">常用对象</a>。点击链接进去就能查看到这个对象的<a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects/channel.md">具体描述</a>，在页面最下方还列举了与这个对象相关的<a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects/channel.md#%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8">全部系统调用</a>。
+进一步查看系统调用的 <a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/channel_read.md#%E6%A6%82%E8%A6%81">API 定义</a>，以及它的<a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/channel_read.md#%E6%8F%8F%E8%BF%B0">行为描述</a>，我们就能更深入地了解用户程序操作内核对象的一些细节：</p>
+<ul>
+<li>
+<p>创建：每一种内核对象都存在一个系统调用来创建它，例如 <a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/channel_create.md"><code>zx_channel_create</code></a>。
+创建对象时一般需要传入一个参数选项 <code>options</code>，若创建成功则内核会将一个新句柄写入用户指定的内存中。</p>
+</li>
+<li>
+<p>使用：获得对象句柄后可以通过若干系统调用对它进行操作，例如 <a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/channel_write.md"><code>zx_channel_write</code></a>。
+这类系统调用一般需要传入句柄 <code>handle</code> 作为第一个参数，内核首先对其进行检查，如果句柄非法或者对象类型与系统调用不匹配就会报错。
+接下来内核会检查句柄的权限是否满足操作的要求，例如 <code>write</code> 操作一般要求句柄具有 <code>WRITE</code> 权限，如果权限不满足就会继续报错。</p>
+</li>
+<li>
+<p>关闭：当用户程序不再使用对象时，会调用 <a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/handle_close.md"><code>zx_handle_close</code></a> 关闭句柄。当用户进程退出时，仍处于打开状态的句柄也都会自动关闭。</p>
+</li>
+</ul>
+<p>我们还发现，有一类 Object 系统调用是对所有内核对象都适用的。
+这表明所有内核对象都有一些公共属性，例如 ID、名称等等。每一种内核对象也会有自己特有的属性。</p>
+<p>其中一些 Object 系统调用和信号相关。Zircon 每个内核对象都附带有 32 个 <strong><a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/signals.md">信号（Signals）</a></strong>，它们代表了不同类型的事件。
+与传统 Unix 系统的信号不同，它不能异步地打断用户程序运行，而只能由用户程序主动地阻塞等待在某个对象的某些信号上面。
+信号是 Zircon 内核中很重要的机制，不过这部分在前期不会涉及，我们留到第五章再具体实现。</p>
+<p>以上我们了解了 Zircon 内核对象的相关概念和使用方式。接下来在这一节中，我们将用 Rust 实现内核对象的基本框架，以方便后续快速实现各种具体类型的内核对象。
+从传统面向对象语言的视角看，我们只是在实现一个基类。但由于 Rust 语言模型的限制，这件事情需要用到一些特殊的技巧。</p>
 <h2><a class="header" href="#建立项目" id="建立项目">建立项目</a></h2>
 <p>首先我们需要安装 Rust 工具链。在 Linux 或 macOS 系统下，只需要用一个命令下载安装 rustup 即可：</p>
 <pre><code class="language-sh">$ curl https://sh.rustup.rs -sSf | sh
@@ -323,10 +354,11 @@ DummyObject *dummy = dynamic_cast&lt;DummyObject*&gt;(base);
 <p>但在 Rust 中，由于其 trait 模型的限制，向下转换并不是一件容易的事情。
 虽然标准库中提供了 <a href="https://doc.rust-lang.org/std/any/"><code>Any</code></a> trait，部分实现了动态类型的功能，但实际操作起来却困难重重。
 不信邪的同学可以自己折腾一下：</p>
-<pre><code class="language-rust editable noplaypen"><span class="boring">use core::any::Any;
-</span><span class="boring">use alloc::sync::Arc;
-</span><span class="boring">
-</span>trait KernelObject: Any + Send + Sync {}
+<pre><pre class="playground"><code class="language-rust editable"><span class="boring">use std::any::Any;
+</span><span class="boring">use std::sync::Arc;
+</span><span class="boring">fn main() {}
+</span>
+trait KernelObject: Any + Send + Sync {}
 fn downcast_v1&lt;T: KernelObject&gt;(object: Arc&lt;dyn KernelObject&gt;) -&gt; Arc&lt;T&gt; {
     object.downcast::&lt;T&gt;().unwrap()
 }
@@ -334,7 +366,7 @@ fn downcast_v2&lt;T: KernelObject&gt;(object: Arc&lt;dyn KernelObject&gt;) -&gt;
     let object: Arc&lt;dyn Any + Send + Sync + 'static&gt; = object;
     object.downcast::&lt;T&gt;().unwrap()
 }
-</code></pre>
+</code></pre></pre>
 <p>当然这个问题也困扰了 Rust 社区中的很多人。目前已经有人提出了一套不错的解决方案，就是我们接下来要引入的 <a href="https://docs.rs/downcast-rs/1.2.0/downcast_rs/index.html"><code>downcast-rs</code></a> 库：</p>
 <pre><code class="language-toml">[dependencies]
 downcast-rs = { version = &quot;1.2.0&quot;, default-features = false }
