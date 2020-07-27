@@ -2,13 +2,57 @@
 
 ## 内核对象简介
 
-TODO
+在动手编写我们的代码之前，需要首先进行调研和学习，对目标对象有一个全面系统的了解。
+而了解一个项目设计的最好方式就是阅读官方提供的手册和文档。
 
-详细内容可参考 Fuchsia 官方文档：[内核对象]。
-
-在这一节中我们将在 Rust 中实现内核对象的概念。
+让我们先来阅读一下 Fuchsia 官方文档：[内核对象]。这个链接是社区翻译的中文版，已经有些年头了。如果读者能够科学上网，推荐直接阅读[官方英文版]。
 
 [内核对象]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects.md
+[官方英文版]: https://fuchsia.dev/fuchsia-src/reference/kernel_objects/objects
+
+通过阅读文档，我们了解到与内核对象相关的三个重要概念：**对象（Object），句柄（Handle），权限（Rights）**。它们在 Zircon 内核中的角色和关系如下图所示：
+
+![](img/ch01-01-kernel-object.png)
+
+简单来说：
+
+* Zircon是一个基于对象的内核，内核资源被抽象封装在不同的 **对象** 中。
+* 用户程序通过 **句柄** 与内核交互。句柄是对某一对象的引用，并且附加了特定的 **权限**。
+* 对象通过 **引用计数** 管理生命周期。当最后一个句柄关闭时，对象随之销毁。
+
+此外在内核对象的文档中，还列举了一些[常用对象]。点击链接进去就能查看到这个对象的[具体描述]，在页面最下方还列举了与这个对象相关的[全部系统调用]。
+进一步查看系统调用的 [API 定义]，以及它的[行为描述]，我们就能更深入地了解用户程序操作内核对象的一些细节：
+
+[常用对象]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects.md#应用程序可用的内核对象
+[具体描述]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects/channel.md
+[全部系统调用]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects/channel.md#系统调用
+[API 定义]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/channel_read.md#概要
+[行为描述]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/channel_read.md#描述
+
+* 创建：每一种内核对象都存在一个系统调用来创建它，例如 [`zx_channel_create`]。
+创建对象时一般需要传入一个参数选项 `options`，若创建成功则内核会将一个新句柄写入用户指定的内存中。
+
+* 使用：获得对象句柄后可以通过若干系统调用对它进行操作，例如 [`zx_channel_write`]。
+这类系统调用一般需要传入句柄 `handle` 作为第一个参数，内核首先对其进行检查，如果句柄非法或者对象类型与系统调用不匹配就会报错。
+接下来内核会检查句柄的权限是否满足操作的要求，例如 `write` 操作一般要求句柄具有 `WRITE` 权限，如果权限不满足就会继续报错。
+
+* 关闭：当用户程序不再使用对象时，会调用 [`zx_handle_close`] 关闭句柄。当用户进程退出时，仍处于打开状态的句柄也都会自动关闭。
+
+[`zx_channel_create`]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/channel_create.md
+[`zx_channel_write`]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/channel_write.md
+[`zx_handle_close`]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/handle_close.md
+
+我们还发现，有一类 Object 系统调用是对所有内核对象都适用的。
+这表明所有内核对象都有一些公共属性，例如 ID、名称等等。每一种内核对象也会有自己特有的属性。
+
+其中一些 Object 系统调用和信号相关。Zircon 每个内核对象都附带有 32 个 **[信号（Signals）]**，它们代表了不同类型的事件。
+与传统 Unix 系统的信号不同，它不能异步地打断用户程序运行，而只能由用户程序主动地阻塞等待在某个对象的某些信号上面。
+信号是 Zircon 内核中很重要的机制，不过这部分在前期不会涉及，我们留到第五章再具体实现。
+
+[信号（Signals）]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/signals.md
+
+以上我们了解了 Zircon 内核对象的相关概念和使用方式。接下来在这一节中，我们将用 Rust 实现内核对象的基本框架，以方便后续快速实现各种具体类型的内核对象。
+从传统面向对象语言的视角看，我们只是在实现一个基类。但由于 Rust 语言模型的限制，这件事情需要用到一些特殊的技巧。
 
 ## 建立项目
 
@@ -174,10 +218,11 @@ DummyObject *dummy = dynamic_cast<DummyObject*>(base);
 
 [`Any`]: https://doc.rust-lang.org/std/any/
 
-```rust,editable,noplaypen
-# use core::any::Any;
-# use alloc::sync::Arc;
-#
+```rust,editable
+# use std::any::Any;
+# use std::sync::Arc;
+# fn main() {}
+
 trait KernelObject: Any + Send + Sync {}
 fn downcast_v1<T: KernelObject>(object: Arc<dyn KernelObject>) -> Arc<T> {
     object.downcast::<T>().unwrap()
