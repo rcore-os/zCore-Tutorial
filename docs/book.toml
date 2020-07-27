@@ -4,3 +4,5 @@ language = "cn"
 multilingual = false
 src = "src"
 title = "简明 zCore 教程"
+[output.html.playpen]
+editable = true
