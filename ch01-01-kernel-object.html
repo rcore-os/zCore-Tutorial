@@ -175,7 +175,8 @@ $ cd zcore
 </code></pre>
 <p>这个程序库目前是在你的 Linux 或 macOS 上运行，但有朝一日它会成为一个真正的 OS 在裸机上运行。
 为此我们需要移除对标准库的依赖，使其成为一个不依赖当前 OS 功能的库。在 <code>lib.rs</code> 的第一行添加声明：</p>
-<pre><code class="language-rust noplaypen">#![no_std]
+<pre><code class="language-rust noplaypen">// src/lib.rs
+#![no_std]
 extern crate alloc;
 </code></pre>
 <p>现在我们可以尝试运行一下自带的单元测试，编译器可能会自动下载并安装工具链：</p>
@@ -193,10 +194,8 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 同一种方法在不同类型的对象中可能会有不同的行为，在面向对象语言中我们称其为<strong>多态（Polymorphism）</strong>。</p>
 <p>Rust 是一门部分面向对象的语言，我们通常用它的 trait 实现接口和多态。</p>
 <p>首先创建一个 <code>KernelObject</code> trait 作为内核对象的公共接口：</p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// 内核对象公共接口
+<pre><code class="language-rust noplaypen">// src/object/mod.rs
+/// 内核对象公共接口
 pub trait KernelObject: Send + Sync {
     /// 获取对象 ID
     fn id(&amp;self) -&gt; KoID;
@@ -210,14 +209,14 @@ pub trait KernelObject: Send + Sync {
 
 /// 对象 ID 类型
 pub type KoID = u64;
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <p>这里的 <a href="https://kaisery.github.io/trpl-zh-cn/ch16-04-extensible-concurrency-sync-and-send.html"><code>Send + Sync</code></a> 是一个约束所有 <code>KernelObject</code> 都要满足的前提条件，即它必须是一个<strong>并发对象</strong>。
 所谓并发对象指的是<strong>可以安全地被多线程共享访问</strong>。事实上我们的内核本身就是一个共享地址空间的多线程程序，在裸机上每个 CPU 核都可以被视为一个并发执行的线程。
 由于内核对象可能被多个线程同时访问，因此它必须是并发对象。</p>
 <h2><a class="header" href="#实现一个空对象" id="实现一个空对象">实现一个空对象</a></h2>
 <p>接下来我们实现一个最简单的空对象 <code>DummyObject</code>，并为它实现 <code>KernelObject</code> 接口：</p>
-<pre><code class="language-rust noplaypen">use spin::Mutex;
+<pre><code class="language-rust noplaypen">// src/object/object.rs
+use spin::Mutex;
 
 /// 空对象
 #[derive(Debug)]
@@ -240,7 +239,8 @@ struct DummyObjectInner {
 spin = &quot;0.5&quot;
 </code></pre>
 <p>然后我们为新对象实现构造函数：</p>
-<pre><code class="language-rust noplaypen">use alloc::sync::Arc;
+<pre><code class="language-rust noplaypen">// src/object/object.rs
+use alloc::sync::Arc;
 use core::sync::atomic::*;
 
 impl DummyObject {
@@ -263,7 +263,8 @@ impl DummyObject {
 ID 类型使用 <code>u64</code>，保证了数值空间足够大，在有生之年都不用担心溢出问题。在 Zircon 中 ID 从 1024 开始分配，1024 以下保留作内核内部使用。</p>
 <p>另外注意这里 <code>new</code> 函数返回类型不是 <code>Self</code> 而是 <code>Arc&lt;Self&gt;</code>，这是为了以后方便而做的统一约定。</p>
 <p>最后我们为它实现 <code>KernelObject</code> 接口：</p>
-<pre><code class="language-rust noplaypen">impl KernelObject for DummyObject {
+<pre><code class="language-rust noplaypen">// src/object/object.rs
+impl KernelObject for DummyObject {
     fn id(&amp;self) -&gt; KoID {
         self.id
     }
@@ -281,7 +282,8 @@ ID 类型使用 <code>u64</code>，保证了数值空间足够大，在有生之
 <p>到此为止，我们已经迈出了万里长征第一步，实现了一个最简单的功能。有实现，就要有测试！即使最简单的代码也要保证它的行为符合我们预期。
 只有对现有代码进行充分测试，在未来做添加和修改的时候，我们才有信心不会把事情搞砸。俗话讲&quot;万丈高楼平地起&quot;，把地基打好才能盖摩天大楼。</p>
 <p>为了证明上面代码的正确性，我们写一个简单的单元测试，替换掉自带的 <code>it_works</code> 函数：</p>
-<pre><code class="language-rust noplaypen">#[cfg(test)]
+<pre><code class="language-rust noplaypen">// src/object/object.rs
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]
@@ -321,11 +323,9 @@ DummyObject *dummy = dynamic_cast&lt;DummyObject*&gt;(base);
 <p>但在 Rust 中，由于其 trait 模型的限制，向下转换并不是一件容易的事情。
 虽然标准库中提供了 <a href="https://doc.rust-lang.org/std/any/"><code>Any</code></a> trait，部分实现了动态类型的功能，但实际操作起来却困难重重。
 不信邪的同学可以自己折腾一下：</p>
-<pre><pre class="playground"><code class="language-rust editable">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span><span class="boring">use std::any::Any;
-</span><span class="boring">use std::sync::Arc;
+<pre><code class="language-rust editable noplaypen"><span class="boring">use core::any::Any;
+</span><span class="boring">use alloc::sync::Arc;
+</span><span class="boring">
 </span>trait KernelObject: Any + Send + Sync {}
 fn downcast_v1&lt;T: KernelObject&gt;(object: Arc&lt;dyn KernelObject&gt;) -&gt; Arc&lt;T&gt; {
     object.downcast::&lt;T&gt;().unwrap()
@@ -334,15 +334,15 @@ fn downcast_v2&lt;T: KernelObject&gt;(object: Arc&lt;dyn KernelObject&gt;) -&gt;
     let object: Arc&lt;dyn Any + Send + Sync + 'static&gt; = object;
     object.downcast::&lt;T&gt;().unwrap()
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <p>当然这个问题也困扰了 Rust 社区中的很多人。目前已经有人提出了一套不错的解决方案，就是我们接下来要引入的 <a href="https://docs.rs/downcast-rs/1.2.0/downcast_rs/index.html"><code>downcast-rs</code></a> 库：</p>
 <pre><code class="language-toml">[dependencies]
 downcast-rs = { version = &quot;1.2.0&quot;, default-features = false }
 </code></pre>
-<p>（题外话：这个库原来是不支持 no_std 的，zCore 有这个需求，于是就顺便帮他实现了一把）</p>
+<p>（题外话：这个库原来是不支持 <code>no_std</code> 的，zCore 有这个需求，于是就顺便帮他实现了一把）</p>
 <p>按照它文档的描述，我们要为自己的接口实现向下转换，只需以下修改：</p>
-<pre><code class="language-rust noplaypen">use core::fmt::Debug;
+<pre><code class="language-rust noplaypen">// src/object/mod.rs
+use core::fmt::Debug;
 use downcast_rs::{impl_downcast, DowncastSync};
 
 pub trait KernelObject: DowncastSync + Debug {...}
@@ -350,7 +350,8 @@ impl_downcast!(sync KernelObject);
 </code></pre>
 <p>其中 <code>DowncastSync</code> 代替了原来的 <code>Send + Sync</code>，<code>Debug</code> 用于出错时输出调试信息。
 <code>impl_downcast!</code> 宏用来帮我们自动生成转换函数，然后就可以用 <code>downcast_arc</code> 来对 <code>Arc</code> 做向下转换了。我们直接来测试一把：</p>
-<pre><code class="language-rust noplaypen">#[test]
+<pre><code class="language-rust noplaypen">// src/object/object.rs
+#[test]
 fn downcast() {
     let dummy = DummyObject::new();
     let object: Arc&lt;dyn KernelObject&gt; = dummy;
@@ -382,7 +383,8 @@ test object::tests::dummy_object ... ok
 <li>为子类实现 trait 接口，所有方法直接委托给内部 struct 完成。这部分使用宏来自动生成模板代码。</li>
 </ul>
 <p>而所谓的内部 struct，其实就是我们上面实现的 <code>DummyObject</code>。为了更好地体现它的功能，我们给他改个名叫 <code>KObjectBase</code>：</p>
-<pre><code class="language-rust noplaypen">/// 内核对象核心结构
+<pre><code class="language-rust noplaypen">// src/object/mod.rs
+/// 内核对象核心结构
 pub struct KObjectBase {
     /// 对象 ID
     pub id: KoID,
@@ -396,7 +398,8 @@ struct KObjectBaseInner {
 }
 </code></pre>
 <p>接下来我们把它的构造函数改为实现 <code>Default</code> trait，并且公共属性和方法都指定为 <code>pub</code>：</p>
-<pre><code class="language-rust noplaypen">impl Default for KObjectBase {
+<pre><code class="language-rust noplaypen">// src/object/mod.rs
+impl Default for KObjectBase {
     /// 创建一个新 `KObjectBase`
     fn default() -&gt; Self {
         KObjectBase {
@@ -415,7 +418,8 @@ impl KObjectBase {
 }
 </code></pre>
 <p>最后来写一个魔法的宏！</p>
-<pre><code class="language-rust noplaypen">/// 为内核对象 struct 自动实现 `KernelObject` trait 的宏。
+<pre><code class="language-rust noplaypen">// src/object/mod.rs
+/// 为内核对象 struct 自动实现 `KernelObject` trait 的宏。
 #[macro_export] // 导出宏，可在 crate 外部使用
 macro_rules! impl_kobject {
     // 匹配类型名，并可以提供函数覆盖默认实现
@@ -458,7 +462,8 @@ macro_rules! impl_kobject {
 }
 </code></pre>
 <p>轮子已经造好了！让我们看看如何用它方便地实现一个内核对象，仍以 <code>DummyObject</code> 为例：</p>
-<pre><code class="language-rust noplaypen">/// 空对象
+<pre><code class="language-rust noplaypen">// src/object/mod.rs
+/// 空对象
 pub struct DummyObject {
     // 其中必须包含一个名为 `base` 的 `KObjectBase`
     base: KObjectBase,
@@ -477,7 +482,8 @@ impl DummyObject {
 }
 </code></pre>
 <p>是不是方便了很多？最后按照惯例，用单元测试检验实现的正确性：</p>
-<pre><code class="language-rust noplaypen">#[test]
+<pre><code class="language-rust noplaypen">// src/object/mod.rs
+#[test]
 fn impl_kobject() {
     use alloc::format;
     let dummy = DummyObject::new();
@@ -493,7 +499,7 @@ fn impl_kobject() {
     let _result: Arc&lt;DummyObject&gt; = object.downcast_arc::&lt;DummyObject&gt;().unwrap();
 }
 </code></pre>
-<p>有兴趣的读者可以继续探索使用功能更强大的 <strong>过程宏（proc_macro）</strong>，进一步简化实现新内核对象所需的模板代码。
+<p>有兴趣的读者可以继续探索使用功能更强大的 <a href="https://doc.rust-lang.org/proc_macro/index.html"><strong>过程宏（proc_macro）</strong></a>，进一步简化实现新内核对象所需的模板代码。
 如果能把上面的代码块缩小成下面这两行，就更加完美了：</p>
 <pre><code class="language-rust noplaypen">#[KernelObject]
 pub struct DummyObject;
@@ -559,6 +565,12 @@ pub struct DummyObject;
         </script>
         
 
+        
+        <script src="ace.js" type="text/javascript" charset="utf-8"></script>
+        <script src="editor.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mode-rust.js" type="text/javascript" charset="utf-8"></script>
+        <script src="theme-dawn.js" type="text/javascript" charset="utf-8"></script>
+        <script src="theme-tomorrow_night.js" type="text/javascript" charset="utf-8"></script>
         
 
         
