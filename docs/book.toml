@@ -4,10 +4,22 @@ language = "cn"
 multilingual = false
 src = "src"
 title = "简明 zCore 教程"
+[rust]
+edition = "2018"
 [output.html.playpen]
 editable = true
 [output.html]
 git-repository-url = "https://github.com/rcore-os/zCore-Tutorial"
-mathjax-support = true
-[preprocessor.mathjax]
-renderers = ["html"]
+# mathjax-support = true
+# [preprocessor.mathjax]
+# renderers = ["html"]
+[output.html.search]
+enable = true
+limit-results = 30
+teaser-word-count = 30
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 1
+boost-paragraph = 1
+expand = true
+heading-split-level = 3
