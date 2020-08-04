@@ -6,3 +6,8 @@ src = "src"
 title = "简明 zCore 教程"
 [output.html.playpen]
 editable = true
+[output.html]
+git-repository-url = "https://github.com/rcore-os/zCore-Tutorial"
+mathjax-support = true
+[preprocessor.mathjax]
+renderers = ["html"]
