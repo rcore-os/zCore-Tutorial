@@ -130,6 +130,10 @@
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
                         
+                        <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        
                     </div>
                 </div>
 
@@ -244,7 +248,8 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 同一种方法在不同类型的对象中可能会有不同的行为，在面向对象语言中我们称其为<strong>多态（Polymorphism）</strong>。</p>
 <p>Rust 是一门部分面向对象的语言，我们通常用它的 trait 实现接口和多态。</p>
 <p>首先创建一个 <code>KernelObject</code> trait 作为内核对象的公共接口：</p>
-<pre><code class="language-rust noplaypen">// src/object/mod.rs
+<pre><code class="language-rust noplaypen">use alloc::string::String;
+// src/object/mod.rs
 /// 内核对象公共接口
 pub trait KernelObject: Send + Sync {
     /// 获取对象 ID
@@ -373,7 +378,7 @@ DummyObject *dummy = dynamic_cast&lt;DummyObject*&gt;(base);
 <p>但在 Rust 中，由于其 trait 模型的限制，向下转换并不是一件容易的事情。
 虽然标准库中提供了 <a href="https://doc.rust-lang.org/std/any/"><code>Any</code></a> trait，部分实现了动态类型的功能，但实际操作起来却困难重重。
 不信邪的同学可以自己折腾一下：</p>
-<pre><pre class="playground"><code class="language-rust editable"><span class="boring">use std::any::Any;
+<pre><pre class="playground"><code class="language-rust editable edition2018"><span class="boring">use std::any::Any;
 </span><span class="boring">use std::sync::Arc;
 </span><span class="boring">fn main() {}
 </span>
