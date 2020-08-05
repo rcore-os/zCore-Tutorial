@@ -113,6 +113,7 @@ Rust 是一门部分面向对象的语言，我们通常用它的 trait 实现�
 首先创建一个 `KernelObject` trait 作为内核对象的公共接口：
 
 ```rust,noplaypen
+use alloc::string::String;
 // src/object/mod.rs
 /// 内核对象公共接口
 pub trait KernelObject: Send + Sync {
