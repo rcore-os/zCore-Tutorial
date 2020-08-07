@@ -170,7 +170,7 @@
 <ul>
 <li>Zircon是一个基于对象的内核，内核资源被抽象封装在不同的 <strong>对象</strong> 中。</li>
 <li>用户程序通过 <strong>句柄</strong> 与内核交互。句柄是对某一对象的引用，并且附加了特定的 <strong>权限</strong>。</li>
-<li>对象通过 <strong>引用计数</strong> 管理生命周期。当最后一个句柄关闭时，对象随之销毁。</li>
+<li>对象通过 <strong>引用计数</strong> 管理生命周期。对于大多数对象，当指向它的最后一个句柄关闭时，对象随之销毁，或<a href="https://fuchsia.dev/fuchsia-src/concepts/kernel/concepts#handles_and_rights">进入无法挽回的最终状态</a>。</li>
 </ul>
 <p>此外在内核对象的文档中，还列举了一些<a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects.md#%E5%BA%94%E7%94%A8%E7%A8%8B%E5%BA%8F%E5%8F%AF%E7%94%A8%E7%9A%84%E5%86%85%E6%A0%B8%E5%AF%B9%E8%B1%A1">常用对象</a>。点击链接进去就能查看到这个对象的<a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects/channel.md">具体描述</a>，在页面最下方还列举了与这个对象相关的<a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects/channel.md#%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8">全部系统调用</a>。
 进一步查看系统调用的 <a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/channel_read.md#%E6%A6%82%E8%A6%81">API 定义</a>，以及它的<a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/channel_read.md#%E6%8F%8F%E8%BF%B0">行为描述</a>，我们就能更深入地了解用户程序操作内核对象的一些细节：</p>
