@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>🚧 物理内存：VMO 对象 - 简明 zCore 教程</title>
+        <title>🚧 等待内核对象的信号 - 简明 zCore 教程</title>
         
         
 
@@ -89,7 +89,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">简明 zCore 教程</a></li><li class="chapter-item expanded affix "><a href="zcore-intro.html">🚧 zCore 整体结构和设计模式</a></li><li class="chapter-item expanded affix "><a href="fuchsia.html">🚧 Fuchsia OS 和 Zircon 微内核</a></li><li class="chapter-item expanded "><a href="ch01-00-object.html"><strong aria-hidden="true">1.</strong> 内核对象</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch01-01-kernel-object.html"><strong aria-hidden="true">1.1.</strong> ✅ 初识内核对象</a></li><li class="chapter-item expanded "><a href="ch01-02-process-object.html"><strong aria-hidden="true">1.2.</strong> 🚧 对象管理器：Process 对象</a></li><li class="chapter-item expanded "><a href="ch01-03-channel-object.html"><strong aria-hidden="true">1.3.</strong> 🚧 对象传送器：Channel 对象</a></li></ol></li><li class="chapter-item expanded "><a href="ch02-00-task.html"><strong aria-hidden="true">2.</strong> 任务管理</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch02-01-zircon-task.html"><strong aria-hidden="true">2.1.</strong> 🚧 Zircon 任务管理体系</a></li><li class="chapter-item expanded "><a href="ch02-02-process-job-object.html"><strong aria-hidden="true">2.2.</strong> 🚧 进程管理：Process 与 Job 对象</a></li><li class="chapter-item expanded "><a href="ch02-03-thread-object.html"><strong aria-hidden="true">2.3.</strong> 🚧 线程管理：Thread 对象</a></li></ol></li><li class="chapter-item expanded "><a href="ch03-00-memory.html"><strong aria-hidden="true">3.</strong> 内存管理</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch03-01-zircon-memory.html"><strong aria-hidden="true">3.1.</strong> 🚧 Zircon 内存管理模型</a></li><li class="chapter-item expanded "><a href="ch03-02-vmo.html" class="active"><strong aria-hidden="true">3.2.</strong> 🚧 物理内存：VMO 对象</a></li><li class="chapter-item expanded "><a href="ch03-03-vmo-paged.html"><strong aria-hidden="true">3.3.</strong> 🚧 物理内存：按页分配的 VMO</a></li><li class="chapter-item expanded "><a href="ch03-04-vmar.html"><strong aria-hidden="true">3.4.</strong> 🚧 虚拟内存：VMAR 对象</a></li></ol></li><li class="chapter-item expanded "><a href="ch04-00-userspace.html"><strong aria-hidden="true">4.</strong> 用户程序</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch04-01-user-program.html"><strong aria-hidden="true">4.1.</strong> 🚧 Zircon 用户程序</a></li><li class="chapter-item expanded "><a href="ch04-02-context-switch.html"><strong aria-hidden="true">4.2.</strong> 🚧 上下文切换</a></li><li class="chapter-item expanded "><a href="ch04-03-syscall.html"><strong aria-hidden="true">4.3.</strong> 🚧 系统调用</a></li></ol></li><li class="chapter-item expanded "><a href="ch05-00-signal-and-waiting.html"><strong aria-hidden="true">5.</strong> 信号和等待</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch05-01-wait-signal.html"><strong aria-hidden="true">5.1.</strong> 🚧 等待内核对象的信号</a></li><li class="chapter-item expanded "><a href="ch05-02-port-object.html"><strong aria-hidden="true">5.2.</strong> 🚧 同时等待多个信号：Port 对象</a></li><li class="chapter-item expanded "><a href="ch05-03-more-signal-objects.html"><strong aria-hidden="true">5.3.</strong> 🚧 实现更多：EventPair, Timer 对象</a></li><li class="chapter-item expanded "><a href="ch05-04-futex-object.html"><strong aria-hidden="true">5.4.</strong> 🚧 用户态同步互斥：Futex 对象</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">简明 zCore 教程</a></li><li class="chapter-item expanded affix "><a href="zcore-intro.html">🚧 zCore 整体结构和设计模式</a></li><li class="chapter-item expanded affix "><a href="fuchsia.html">🚧 Fuchsia OS 和 Zircon 微内核</a></li><li class="chapter-item expanded "><a href="ch01-00-object.html"><strong aria-hidden="true">1.</strong> 内核对象</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch01-01-kernel-object.html"><strong aria-hidden="true">1.1.</strong> ✅ 初识内核对象</a></li><li class="chapter-item expanded "><a href="ch01-02-process-object.html"><strong aria-hidden="true">1.2.</strong> 🚧 对象管理器：Process 对象</a></li><li class="chapter-item expanded "><a href="ch01-03-channel-object.html"><strong aria-hidden="true">1.3.</strong> 🚧 对象传送器：Channel 对象</a></li></ol></li><li class="chapter-item expanded "><a href="ch02-00-task.html"><strong aria-hidden="true">2.</strong> 任务管理</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch02-01-zircon-task.html"><strong aria-hidden="true">2.1.</strong> 🚧 Zircon 任务管理体系</a></li><li class="chapter-item expanded "><a href="ch02-02-process-job-object.html"><strong aria-hidden="true">2.2.</strong> 🚧 进程管理：Process 与 Job 对象</a></li><li class="chapter-item expanded "><a href="ch02-03-thread-object.html"><strong aria-hidden="true">2.3.</strong> 🚧 线程管理：Thread 对象</a></li></ol></li><li class="chapter-item expanded "><a href="ch03-00-memory.html"><strong aria-hidden="true">3.</strong> 内存管理</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch03-01-zircon-memory.html"><strong aria-hidden="true">3.1.</strong> 🚧 Zircon 内存管理模型</a></li><li class="chapter-item expanded "><a href="ch03-02-vmo.html"><strong aria-hidden="true">3.2.</strong> 🚧 物理内存：VMO 对象</a></li><li class="chapter-item expanded "><a href="ch03-03-vmo-paged.html"><strong aria-hidden="true">3.3.</strong> 🚧 物理内存：按页分配的 VMO</a></li><li class="chapter-item expanded "><a href="ch03-04-vmar.html"><strong aria-hidden="true">3.4.</strong> 🚧 虚拟内存：VMAR 对象</a></li></ol></li><li class="chapter-item expanded "><a href="ch04-00-userspace.html"><strong aria-hidden="true">4.</strong> 用户程序</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch04-01-user-program.html"><strong aria-hidden="true">4.1.</strong> 🚧 Zircon 用户程序</a></li><li class="chapter-item expanded "><a href="ch04-02-context-switch.html"><strong aria-hidden="true">4.2.</strong> 🚧 上下文切换</a></li><li class="chapter-item expanded "><a href="ch04-03-syscall.html"><strong aria-hidden="true">4.3.</strong> 🚧 系统调用</a></li></ol></li><li class="chapter-item expanded "><a href="ch05-00-signal-and-waiting.html"><strong aria-hidden="true">5.</strong> 信号和等待</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch05-01-wait-signal.html" class="active"><strong aria-hidden="true">5.1.</strong> 🚧 等待内核对象的信号</a></li><li class="chapter-item expanded "><a href="ch05-02-port-object.html"><strong aria-hidden="true">5.2.</strong> 🚧 同时等待多个信号：Port 对象</a></li><li class="chapter-item expanded "><a href="ch05-03-more-signal-objects.html"><strong aria-hidden="true">5.3.</strong> 🚧 实现更多：EventPair, Timer 对象</a></li><li class="chapter-item expanded "><a href="ch05-04-futex-object.html"><strong aria-hidden="true">5.4.</strong> 🚧 用户态同步互斥：Futex 对象</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -159,28 +159,20 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#物理内存vmo-对象" id="物理内存vmo-对象">物理内存：VMO 对象</a></h1>
-<h2><a class="header" href="#vmo-简介" id="vmo-简介">VMO 简介</a></h2>
+                        <h1><a class="header" href="#等待内核对象的信号" id="等待内核对象的信号">等待内核对象的信号</a></h1>
+<h2><a class="header" href="#信号与等待机制简介" id="信号与等待机制简介">信号与等待机制简介</a></h2>
+<h2><a class="header" href="#在内核对象中加入信号" id="在内核对象中加入信号">在内核对象中加入信号</a></h2>
 <blockquote>
-<p>根据文档梳理 VMO 的主要特性</p>
+<p>定义 Signal 结构体</p>
+<p>在 KObjectBase 中加入 signal 和 callbacks 变量，实现 signal 系列函数，并做单元测试</p>
 </blockquote>
-<h2><a class="header" href="#实现-vmo-对象框架" id="实现-vmo-对象框架">实现 VMO 对象框架</a></h2>
+<h2><a class="header" href="#实现信号等待-future" id="实现信号等待-future">实现信号等待 Future</a></h2>
 <blockquote>
-<p>实现 VmObject 结构，其中定义 VmObjectTrait 接口，并提供三个具体实现 Paged, Physical, Slice</p>
+<p>实现 wait_signal 函数，并做单元测试</p>
 </blockquote>
-<h2><a class="header" href="#hal用文件模拟物理内存" id="hal用文件模拟物理内存">HAL：用文件模拟物理内存</a></h2>
+<h2><a class="header" href="#利用-select-组合子实现多对象等待" id="利用-select-组合子实现多对象等待">利用 select 组合子实现多对象等待</a></h2>
 <blockquote>
-<p>初步介绍 mmap，引出用文件模拟物理内存的思想</p>
-<p>创建文件并用 mmap 线性映射到进程地址空间</p>
-<p>实现 pmem_read, pmem_write</p>
-</blockquote>
-<h2><a class="header" href="#实现物理内存-vmo" id="实现物理内存-vmo">实现物理内存 VMO</a></h2>
-<blockquote>
-<p>用 HAL 实现 VmObjectPhysical 的方法，并做单元测试</p>
-</blockquote>
-<h2><a class="header" href="#实现切片-vmo" id="实现切片-vmo">实现切片 VMO</a></h2>
-<blockquote>
-<p>实现 VmObjectSlice，并做单元测试</p>
+<p>实现 wait_signal_many 函数，并做单元测试</p>
 </blockquote>
 
                     </main>
@@ -188,13 +180,13 @@
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="ch03-01-zircon-memory.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="ch05-00-signal-and-waiting.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="ch03-03-vmo-paged.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="ch05-02-port-object.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -206,13 +198,13 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a rel="prev" href="ch03-01-zircon-memory.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="ch05-00-signal-and-waiting.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a rel="next" href="ch03-03-vmo-paged.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="ch05-02-port-object.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 
