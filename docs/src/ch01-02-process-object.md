@@ -7,6 +7,34 @@
 
 > 介绍并实现 Handle，Rights
 
+在 `Cargo.toml` 中加入 `bitflags` 库：
+
+```rust,noplaypen
+[dependencies]
+{{#include ../../code/ch01-02/Cargo.toml:bitflags}}
+```
+
+在 object 模块下定义两个子模块：
+
+```rust,noplaypen
+// src/object/mod.rs
+{{#include ../../code/ch01-02/src/object/mod.rs:mod}}
+```
+
+定义权限：
+
+```rust,noplaypen
+// src/object/rights.rs
+{{#include ../../code/ch01-02/src/object/rights.rs:rights}}
+```
+
+定义句柄：
+
+```rust,noplaypen
+// src/object/handle.rs
+{{#include ../../code/ch01-02/src/object/handle.rs:handle}}
+```
+
 ## 实现第一个内核对象
 
 > 使用上一节的方法，实现一个空的 Process 对象
