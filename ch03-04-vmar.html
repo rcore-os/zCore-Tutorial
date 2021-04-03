@@ -17,12 +17,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
+        
         <link rel="icon" href="favicon.svg">
+        
+        
         <link rel="shortcut icon" href="favicon.png">
+        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
+        
         <link rel="stylesheet" href="css/print.css" media="print">
+        
 
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
@@ -124,9 +130,11 @@
                     <h1 class="menu-title">简明 zCore 教程</h1>
 
                     <div class="right-buttons">
+                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        
                         
                         <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
@@ -159,18 +167,18 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#虚拟内存vmar-对象" id="虚拟内存vmar-对象">虚拟内存：VMAR 对象</a></h1>
-<h2><a class="header" href="#vmar-简介" id="vmar-简介">VMAR 简介</a></h2>
-<h2><a class="header" href="#实现-vmar-对象框架" id="实现-vmar-对象框架">实现 VMAR 对象框架</a></h2>
+                        <h1 id="虚拟内存vmar-对象"><a class="header" href="#虚拟内存vmar-对象">虚拟内存：VMAR 对象</a></h1>
+<h2 id="vmar-简介"><a class="header" href="#vmar-简介">VMAR 简介</a></h2>
+<h2 id="实现-vmar-对象框架"><a class="header" href="#实现-vmar-对象框架">实现 VMAR 对象框架</a></h2>
 <blockquote>
 <p>定义 VmAddressRange，VmMapping</p>
 <p>实现 create_child, map, unmap, destroy 函数，并做单元测试验证地址空间分配</p>
 </blockquote>
-<h2><a class="header" href="#hal用-mmap-模拟页表" id="hal用-mmap-模拟页表">HAL：用 mmap 模拟页表</a></h2>
+<h2 id="hal用-mmap-模拟页表"><a class="header" href="#hal用-mmap-模拟页表">HAL：用 mmap 模拟页表</a></h2>
 <blockquote>
 <p>实现页表接口 map, unmap, protect</p>
 </blockquote>
-<h2><a class="header" href="#实现内存映射" id="实现内存映射">实现内存映射</a></h2>
+<h2 id="实现内存映射"><a class="header" href="#实现内存映射">实现内存映射</a></h2>
 <blockquote>
 <p>用 HAL 实现上面 VMAR 留空的部分，并做单元测试验证内存映射</p>
 </blockquote>

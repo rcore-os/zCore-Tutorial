@@ -17,12 +17,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
+        
         <link rel="icon" href="favicon.svg">
+        
+        
         <link rel="shortcut icon" href="favicon.png">
+        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
+        
         <link rel="stylesheet" href="css/print.css" media="print">
+        
 
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
@@ -124,9 +130,11 @@
                     <h1 class="menu-title">简明 zCore 教程</h1>
 
                     <div class="right-buttons">
+                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        
                         
                         <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
@@ -159,16 +167,16 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#同时等待多个信号port-对象" id="同时等待多个信号port-对象">同时等待多个信号：Port 对象</a></h1>
-<h2><a class="header" href="#port-对象简介" id="port-对象简介">Port 对象简介</a></h2>
+                        <h1 id="同时等待多个信号port-对象"><a class="header" href="#同时等待多个信号port-对象">同时等待多个信号：Port 对象</a></h1>
+<h2 id="port-对象简介"><a class="header" href="#port-对象简介">Port 对象简介</a></h2>
 <blockquote>
 <p>同时提及一下 Linux 的 epoll 机制作为对比</p>
 </blockquote>
-<h2><a class="header" href="#实现-port-对象框架" id="实现-port-对象框架">实现 Port 对象框架</a></h2>
+<h2 id="实现-port-对象框架"><a class="header" href="#实现-port-对象框架">实现 Port 对象框架</a></h2>
 <blockquote>
 <p>定义 Port 和 PortPacket 结构体</p>
 </blockquote>
-<h2><a class="header" href="#实现事件推送和等待" id="实现事件推送和等待">实现事件推送和等待</a></h2>
+<h2 id="实现事件推送和等待"><a class="header" href="#实现事件推送和等待">实现事件推送和等待</a></h2>
 <blockquote>
 <p>实现 KernelObject::send_signal_to_port 和 Port::wait 函数，并做单元测试</p>
 </blockquote>

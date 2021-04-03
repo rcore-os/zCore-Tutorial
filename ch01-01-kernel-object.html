@@ -17,12 +17,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
+        
         <link rel="icon" href="favicon.svg">
+        
+        
         <link rel="shortcut icon" href="favicon.png">
+        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
+        
         <link rel="stylesheet" href="css/print.css" media="print">
+        
 
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
@@ -124,9 +130,11 @@
                     <h1 class="menu-title">简明 zCore 教程</h1>
 
                     <div class="right-buttons">
+                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        
                         
                         <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
@@ -159,8 +167,8 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#初识内核对象" id="初识内核对象">初识内核对象</a></h1>
-<h2><a class="header" href="#内核对象简介" id="内核对象简介">内核对象简介</a></h2>
+                        <h1 id="初识内核对象"><a class="header" href="#初识内核对象">初识内核对象</a></h1>
+<h2 id="内核对象简介"><a class="header" href="#内核对象简介">内核对象简介</a></h2>
 <p>在动手编写我们的代码之前，需要首先进行调研和学习，对目标对象有一个全面系统的了解。
 而了解一个项目设计的最好方式就是阅读官方提供的手册和文档。</p>
 <p>让我们先来阅读一下 Fuchsia 官方文档：<a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects.md">内核对象</a>。这个链接是社区翻译的中文版，已经有些年头了。如果读者能够科学上网，推荐直接阅读<a href="https://fuchsia.dev/fuchsia-src/reference/kernel_objects/objects">官方英文版</a>。</p>
@@ -195,7 +203,7 @@
 信号是 Zircon 内核中很重要的机制，不过这部分在前期不会涉及，我们留到第五章再具体实现。</p>
 <p>以上我们了解了 Zircon 内核对象的相关概念和使用方式。接下来在这一节中，我们将用 Rust 实现内核对象的基本框架，以方便后续快速实现各种具体类型的内核对象。
 从传统面向对象语言的视角看，我们只是在实现一个基类。但由于 Rust 语言模型的限制，这件事情需要用到一些特殊的技巧。</p>
-<h2><a class="header" href="#建立项目" id="建立项目">建立项目</a></h2>
+<h2 id="建立项目"><a class="header" href="#建立项目">建立项目</a></h2>
 <p>首先我们需要安装 Rust 工具链。在 Linux 或 macOS 系统下，只需要用一个命令下载安装 rustup 即可：</p>
 <pre><code class="language-sh">$ curl https://sh.rustup.rs -sSf | sh
 </code></pre>
@@ -206,7 +214,7 @@ $ cd zcore
 </code></pre>
 <p>我们将在这个 crate 中实现所有的内核对象，以库（lib）而不是可执行文件（bin）的形式组织代码，后面我们会依赖单元测试保证代码的正确性。</p>
 <p>由于我们会用到一些不稳定（unstable）的语言特性，需要使用 nightly 版本的工具链。在项目根目录下创建一个 <code>rust-toolchain</code> 文件，指明使用的工具链版本：</p>
-<pre><code class="language-sh">nightly-2020-06-04
+<pre><code class="language-sh">{{#include ../../code/ch01-01/rust-toolchain}}
 </code></pre>
 <p>这个程序库目前是在你的 Linux 或 macOS 上运行，但有朝一日它会成为一个真正的 OS 在裸机上运行。
 为此我们需要移除对标准库的依赖，使其成为一个不依赖当前 OS 功能的库。在 <code>lib.rs</code> 的第一行添加声明：</p>
@@ -224,7 +232,7 @@ test tests::it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 </code></pre>
-<h2><a class="header" href="#实现-kernelobject-接口" id="实现-kernelobject-接口">实现 KernelObject 接口</a></h2>
+<h2 id="实现-kernelobject-接口"><a class="header" href="#实现-kernelobject-接口">实现 KernelObject 接口</a></h2>
 <p>所有的内核对象有一系列共同的属性和方法，我们称这些方法为对象的公共<strong>接口（Interface）</strong>。
 同一种方法在不同类型的对象中可能会有不同的行为，在面向对象语言中我们称其为<strong>多态（Polymorphism）</strong>。</p>
 <p>Rust 是一门部分面向对象的语言，我们通常用它的 trait 实现接口和多态。</p>
@@ -249,7 +257,7 @@ pub type KoID = u64;
 <p>这里的 <a href="https://kaisery.github.io/trpl-zh-cn/ch16-04-extensible-concurrency-sync-and-send.html"><code>Send + Sync</code></a> 是一个约束所有 <code>KernelObject</code> 都要满足的前提条件，即它必须是一个<strong>并发对象</strong>。
 所谓并发对象指的是<strong>可以安全地被多线程共享访问</strong>。事实上我们的内核本身就是一个共享地址空间的多线程程序，在裸机上每个 CPU 核都可以被视为一个并发执行的线程。
 由于内核对象可能被多个线程同时访问，因此它必须是并发对象。</p>
-<h2><a class="header" href="#实现一个空对象" id="实现一个空对象">实现一个空对象</a></h2>
+<h2 id="实现一个空对象"><a class="header" href="#实现一个空对象">实现一个空对象</a></h2>
 <p>接下来我们实现一个最简单的空对象 <code>DummyObject</code>，并为它实现 <code>KernelObject</code> 接口：</p>
 <pre><code class="language-rust noplaypen">// src/object/object.rs
 use spin::Mutex;
@@ -272,7 +280,7 @@ struct DummyObjectInner {
 数据被 <code>Mutex</code> 包起来之后需要首先使用 <a href="https://docs.rs/spin/0.5.2/spin/struct.Mutex.html#method.lock"><code>lock()</code></a> 拿到锁之后才能访问。此时并发访问已经安全，因此被包起来的结构自动具有了 <code>Send + Sync</code> 特性。</p>
 <p>使用自旋锁引入了新的依赖库 <a href="https://docs.rs/spin/0.5.2/spin/index.html"><code>spin</code></a> ，需要在 <code>Cargo.toml</code> 中加入以下声明：</p>
 <pre><code class="language-toml">[dependencies]
-spin = &quot;0.5&quot;
+spin = &quot;0.7&quot;
 </code></pre>
 <p>然后我们为新对象实现构造函数：</p>
 <pre><code class="language-rust noplaypen">// src/object/object.rs
@@ -342,7 +350,7 @@ running 1 test
 test tests::dummy_object ... ok
 </code></pre>
 <p>大功告成！让我们用 <code>cargo fmt</code> 命令格式化一下代码，然后记得 <code>git commit</code> 及时保存进展。</p>
-<h2><a class="header" href="#实现接口到具体类型的向下转换" id="实现接口到具体类型的向下转换">实现接口到具体类型的向下转换</a></h2>
+<h2 id="实现接口到具体类型的向下转换"><a class="header" href="#实现接口到具体类型的向下转换">实现接口到具体类型的向下转换</a></h2>
 <p>在系统调用中，用户进程会传入一个内核对象的句柄，然后内核会根据系统调用的类型，尝试将其转换成特定类型的对象。
 于是这里产生了一个很重要的需求：将接口 <code>Arc&lt;dyn KernelObject&gt;</code> 转换成具体类型的结构 <code>Arc&lt;T&gt; where T: KernelObject</code>。
 这种操作在面向对象语言中称为<strong>向下转换（downcast）</strong>。</p>
@@ -403,7 +411,7 @@ running 2 tests
 test object::downcast ... ok
 test object::tests::dummy_object ... ok
 </code></pre>
-<h2><a class="header" href="#模拟继承用宏自动生成接口实现代码" id="模拟继承用宏自动生成接口实现代码">模拟继承：用宏自动生成接口实现代码</a></h2>
+<h2 id="模拟继承用宏自动生成接口实现代码"><a class="header" href="#模拟继承用宏自动生成接口实现代码">模拟继承：用宏自动生成接口实现代码</a></h2>
 <p>上面我们已经完整实现了一个内核对象，代码看起来很简洁。但当我们要实现更多对象的时候，就会发现一个问题：
 这些对象拥有一些公共属性，接口方法也有共同的实现。
 在传统 OOP 语言中，我们通常使用 <strong>继承（inheritance）</strong> 来复用这些公共代码：子类 B 可以继承父类 A，然后自动拥有父类的所有字段和方法。</p>
@@ -541,7 +549,7 @@ fn impl_kobject() {
 <pre><code class="language-rust noplaypen">#[KernelObject]
 pub struct DummyObject;
 </code></pre>
-<h2><a class="header" href="#总结" id="总结">总结</a></h2>
+<h2 id="总结"><a class="header" href="#总结">总结</a></h2>
 <p>在这一节中我们用 Rust 语言实现了 Zircon 最核心的<strong>内核对象</strong>概念。在此过程中涉及到 Rust 的一系列语言特性和设计模式：</p>
 <ul>
 <li>使用 <strong>trait</strong> 实现接口</li>

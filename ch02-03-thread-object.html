@@ -17,12 +17,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
+        
         <link rel="icon" href="favicon.svg">
+        
+        
         <link rel="shortcut icon" href="favicon.png">
+        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
+        
         <link rel="stylesheet" href="css/print.css" media="print">
+        
 
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
@@ -124,9 +130,11 @@
                     <h1 class="menu-title">简明 zCore 教程</h1>
 
                     <div class="right-buttons">
+                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        
                         
                         <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
@@ -159,23 +167,23 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#线程管理thread-对象" id="线程管理thread-对象">线程管理：Thread 对象</a></h1>
-<h2><a class="header" href="#线程状态" id="线程状态">线程状态</a></h2>
+                        <h1 id="线程管理thread-对象"><a class="header" href="#线程管理thread-对象">线程管理：Thread 对象</a></h1>
+<h2 id="线程状态"><a class="header" href="#线程状态">线程状态</a></h2>
 <blockquote>
 <p>状态转移：创建 -&gt; 运行 -&gt; 暂停 -&gt; 退出，最好有个状态机的图</p>
 <p>实现 ThreadState，最好能加一个单元测试来验证转移过程</p>
 </blockquote>
-<h2><a class="header" href="#线程寄存器上下文" id="线程寄存器上下文">线程寄存器上下文</a></h2>
+<h2 id="线程寄存器上下文"><a class="header" href="#线程寄存器上下文">线程寄存器上下文</a></h2>
 <blockquote>
 <p>定义 ThreadState，实现 read_state，write_state</p>
 </blockquote>
-<h2><a class="header" href="#async-运行时和-hal-硬件抽象层" id="async-运行时和-hal-硬件抽象层">Async 运行时和 HAL 硬件抽象层</a></h2>
+<h2 id="async-运行时和-hal-硬件抽象层"><a class="header" href="#async-运行时和-hal-硬件抽象层">Async 运行时和 HAL 硬件抽象层</a></h2>
 <blockquote>
 <p>简单介绍 async-std 的异步机制</p>
 <p>介绍 HAL 的实现方法：弱链接</p>
 <p>实现 hal_thread_spawn</p>
 </blockquote>
-<h2><a class="header" href="#线程启动" id="线程启动">线程启动</a></h2>
+<h2 id="线程启动"><a class="header" href="#线程启动">线程启动</a></h2>
 <blockquote>
 <p>将 HAL 接入 Thread::start，编写单元测试验证能启动多线程</p>
 </blockquote>

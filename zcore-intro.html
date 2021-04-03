@@ -17,12 +17,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
+        
         <link rel="icon" href="favicon.svg">
+        
+        
         <link rel="shortcut icon" href="favicon.png">
+        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
+        
         <link rel="stylesheet" href="css/print.css" media="print">
+        
 
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
@@ -124,9 +130,11 @@
                     <h1 class="menu-title">简明 zCore 教程</h1>
 
                     <div class="right-buttons">
+                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        
                         
                         <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
@@ -159,9 +167,9 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#zcore-整体结构和设计模式" id="zcore-整体结构和设计模式">zCore 整体结构和设计模式</a></h1>
+                        <h1 id="zcore-整体结构和设计模式"><a class="header" href="#zcore-整体结构和设计模式">zCore 整体结构和设计模式</a></h1>
 <p>首先，从 <a href="https://github.com/rcore-os/zCore/wiki/files/wrj-thesis.pdf">Rust语言操作系统的设计与实现,王润基本科毕设论文,2019</a> 和 <a href="https://github.com/rcore-os/zCore/wiki/files/pql-thesis.pdf">zCore操作系统内核的设计与实现,潘庆霖本科毕设论文,2020</a> 可以了解到从 rCore 的设计到 zCore 的设计过程的全貌。</p>
-<h2><a class="header" href="#zcore-的整体结构" id="zcore-的整体结构">zCore 的整体结构</a></h2>
+<h2 id="zcore-的整体结构"><a class="header" href="#zcore-的整体结构">zCore 的整体结构</a></h2>
 <p><a href="https://github.com/rcore-os/zCore">zCore</a> 的整体结构/项目设计图如下：</p>
 <p><img src="zcore-intro/structure.svg" alt="img" /></p>
 <p>zCore的设计主要有两个出发点：</p>
@@ -177,7 +185,7 @@
 <p>第五层，是硬件抽象层（HAL，Hardware Abstraction Layer），这里对应的是 kernel-hal 模块。kernel-hal 将向上提供所有操作硬件需要的接口，从而使得硬件环境对上层操作系统透明化。</p>
 <p>第六层，是对直接操作硬件的代码进行一层封装，对应模块为 kernel-hal-bare 和 kernel-hal-unix。kernel-hal 系列库仅仅负责接口定义，即将底层硬件/宿主操作系统的操作翻译为上层操作系统可以使用的形式。在这里，kernel-hal-bare 负责翻译裸机的硬件功能，而 kernel-hal-unix 则负责翻译类 Unix 系统的系统调用。</p>
 <p>最底层是底层运行环境，包括 Bare Metal（裸机），Linux / macOS 操作系统。Bare Metal可以认为是硬件架构上的寄存器等硬件接口。</p>
-<h2><a class="header" href="#zcore-内核组件" id="zcore-内核组件">zCore 内核组件</a></h2>
+<h2 id="zcore-内核组件"><a class="header" href="#zcore-内核组件">zCore 内核组件</a></h2>
 <p>zCore 内核运行时组件层次概况如下：</p>
 <p><img src="zcore-intro/image-20200805123801306.png" alt="image-20200805123801306" /></p>
 <p>在zCore启动过程中，会初始化物理页帧分配器、堆分配器、线程调度器等各个组成部分。并委托 zircon-­loader 进行内核对象的初始化创建过程，然后进入用户态的启动过程开始执行。每当用户态触发系统调用进入内核态，系统调用处理例程将会通过已实现的内核对象的功能来对服务请求进行处理；而对应的内核对象的内部实现所需要的各种底层操作，则是通过 HAL 层接口由各个内核组件负责提供。</p>

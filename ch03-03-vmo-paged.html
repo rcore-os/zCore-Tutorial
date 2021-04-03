@@ -17,12 +17,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
+        
         <link rel="icon" href="favicon.svg">
+        
+        
         <link rel="shortcut icon" href="favicon.png">
+        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
+        
         <link rel="stylesheet" href="css/print.css" media="print">
+        
 
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
@@ -124,9 +130,11 @@
                     <h1 class="menu-title">简明 zCore 教程</h1>
 
                     <div class="right-buttons">
+                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        
                         
                         <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
@@ -159,26 +167,26 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#物理内存按页分配的-vmo" id="物理内存按页分配的-vmo">物理内存：按页分配的 VMO</a></h1>
-<h2><a class="header" href="#简介" id="简介">简介</a></h2>
+                        <h1 id="物理内存按页分配的-vmo"><a class="header" href="#物理内存按页分配的-vmo">物理内存：按页分配的 VMO</a></h1>
+<h2 id="简介"><a class="header" href="#简介">简介</a></h2>
 <blockquote>
 <p>说明一下：Zircon 的官方实现中为了高效支持写时复制，使用了复杂精巧的树状数据结构，但它同时也引入了复杂性和各种 Bug。
 我们在这里只实现一个简单版本，完整实现留给读者自行探索。</p>
 <p>介绍 commit 操作的意义和作用</p>
 </blockquote>
-<h2><a class="header" href="#hal物理内存管理" id="hal物理内存管理">HAL：物理内存管理</a></h2>
+<h2 id="hal物理内存管理"><a class="header" href="#hal物理内存管理">HAL：物理内存管理</a></h2>
 <blockquote>
 <p>在 HAL 中实现 PhysFrame 和最简单的分配器</p>
 </blockquote>
-<h2><a class="header" href="#辅助结构blockrange-迭代器" id="辅助结构blockrange-迭代器">辅助结构：BlockRange 迭代器</a></h2>
+<h2 id="辅助结构blockrange-迭代器"><a class="header" href="#辅助结构blockrange-迭代器">辅助结构：BlockRange 迭代器</a></h2>
 <blockquote>
 <p>实现 BlockRange</p>
 </blockquote>
-<h2><a class="header" href="#实现按页分配的-vmo" id="实现按页分配的-vmo">实现按页分配的 VMO</a></h2>
+<h2 id="实现按页分配的-vmo"><a class="header" href="#实现按页分配的-vmo">实现按页分配的 VMO</a></h2>
 <blockquote>
 <p>实现 for_each_page, commit, read, write 函数</p>
 </blockquote>
-<h2><a class="header" href="#vmo-复制" id="vmo-复制">VMO 复制</a></h2>
+<h2 id="vmo-复制"><a class="header" href="#vmo-复制">VMO 复制</a></h2>
 <blockquote>
 <p>实现 create_child 函数</p>
 </blockquote>

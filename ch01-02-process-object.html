@@ -17,12 +17,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
+        
         <link rel="icon" href="favicon.svg">
+        
+        
         <link rel="shortcut icon" href="favicon.png">
+        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
+        
         <link rel="stylesheet" href="css/print.css" media="print">
+        
 
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
@@ -124,9 +130,11 @@
                     <h1 class="menu-title">简明 zCore 教程</h1>
 
                     <div class="right-buttons">
+                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        
                         
                         <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
@@ -159,25 +167,195 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#对象管理器process-对象" id="对象管理器process-对象">对象管理器：Process 对象</a></h1>
-<h2><a class="header" href="#句柄和权限" id="句柄和权限">句柄和权限</a></h2>
+                        <h1 id="对象管理器process-对象"><a class="header" href="#对象管理器process-对象">对象管理器：Process 对象</a></h1>
+<h2 id="句柄和权限"><a class="header" href="#句柄和权限">句柄和权限</a></h2>
 <blockquote>
 <p>介绍并实现 Handle，Rights</p>
 </blockquote>
-<h2><a class="header" href="#实现第一个内核对象" id="实现第一个内核对象">实现第一个内核对象</a></h2>
-<blockquote>
-<p>使用上一节的方法，实现一个空的 Process 对象</p>
-</blockquote>
-<h2><a class="header" href="#存储内核对象句柄" id="存储内核对象句柄">存储内核对象句柄</a></h2>
+<p>在 <code>Cargo.toml</code> 中加入 <code>bitflags</code> 库：</p>
+<pre><code class="language-rust noplaypen">[dependencies]
+bitflags = &quot;1.2&quot;
+</code></pre>
+<p>在 object 模块下定义两个子模块：</p>
+<pre><code class="language-rust noplaypen">// src/object/mod.rs
+mod handle;
+mod rights;
+
+pub use self::handle::*;
+pub use self::rights::*;
+</code></pre>
+<p>定义权限：</p>
+<pre><code class="language-rust noplaypen">// src/object/rights.rs
+use bitflags::bitflags;
+
+bitflags! {
+    /// 句柄权限
+    pub struct Rights: u32 {
+        const DUPLICATE = 1 &lt;&lt; 0;
+        const TRANSFER = 1 &lt;&lt; 1;
+        const READ = 1 &lt;&lt; 2;
+        const WRITE = 1 &lt;&lt; 3;
+        const EXECUTE = 1 &lt;&lt; 4;
+        const MAP = 1 &lt;&lt; 5;
+        const GET_PROPERTY = 1 &lt;&lt; 6;
+        const SET_PROPERTY = 1 &lt;&lt; 7;
+        const ENUMERATE = 1 &lt;&lt; 8;
+        const DESTROY = 1 &lt;&lt; 9;
+        const SET_POLICY = 1 &lt;&lt; 10;
+        const GET_POLICY = 1 &lt;&lt; 11;
+        const SIGNAL = 1 &lt;&lt; 12;
+        const SIGNAL_PEER = 1 &lt;&lt; 13;
+        const WAIT = 1 &lt;&lt; 14;
+        const INSPECT = 1 &lt;&lt; 15;
+        const MANAGE_JOB = 1 &lt;&lt; 16;
+        const MANAGE_PROCESS = 1 &lt;&lt; 17;
+        const MANAGE_THREAD = 1 &lt;&lt; 18;
+        const APPLY_PROFILE = 1 &lt;&lt; 19;
+        const SAME_RIGHTS = 1 &lt;&lt; 31;
+
+        const BASIC = Self::TRANSFER.bits | Self::DUPLICATE.bits | Self::WAIT.bits | Self::INSPECT.bits;
+        const IO = Self::READ.bits | Self::WRITE.bits;
+
+        const DEFAULT_CHANNEL = Self::BASIC.bits &amp; !Self::DUPLICATE.bits | Self::IO.bits | Self::SIGNAL.bits | Self::SIGNAL_PEER.bits;
+    }
+}
+</code></pre>
+<p>定义句柄：</p>
+<pre><code class="language-rust noplaypen">// src/object/handle.rs
+use super::{KernelObject, Rights};
+use alloc::sync::Arc;
+
+/// 内核对象句柄
+#[derive(Clone)]
+pub struct Handle {
+    pub object: Arc&lt;dyn KernelObject&gt;,
+    pub rights: Rights,
+}
+
+impl Handle {
+    /// 创建一个新句柄
+    pub fn new(object: Arc&lt;dyn KernelObject&gt;, rights: Rights) -&gt; Self {
+        Handle { object, rights }
+    }
+}
+</code></pre>
+<h2 id="存储内核对象句柄"><a class="header" href="#存储内核对象句柄">存储内核对象句柄</a></h2>
 <blockquote>
 <p>添加成员变量 handles: BTreeMap&lt;HandleValue, Handle&gt;</p>
 <p>实现 create，add_handle，remove_handle 函数</p>
 </blockquote>
-<h2><a class="header" href="#根据句柄查找内核对象" id="根据句柄查找内核对象">根据句柄查找内核对象</a></h2>
+<p>使用上一节的方法，实现一个空的 Process 对象：</p>
+<pre><code class="language-rust noplaypen">// src/task/process.rs
+/// 进程对象
+pub struct Process {
+    base: KObjectBase,
+    inner: Mutex&lt;ProcessInner&gt;,
+}
+
+impl_kobject!(Process);
+
+struct ProcessInner {
+    handles: BTreeMap&lt;HandleValue, Handle&gt;,
+}
+
+pub type HandleValue = u32;
+
+impl Process {
+    /// 创建一个新的进程对象
+    pub fn new() -&gt; Arc&lt;Self&gt; {
+        Arc::new(Process {
+            base: KObjectBase::default(),
+            inner: Mutex::new(ProcessInner {
+                handles: BTreeMap::default(),
+            }),
+        })
+    }
+}
+</code></pre>
+<p>插入、删除句柄函数：</p>
+<pre><code class="language-rust noplaypen">// src/task/process.rs
+impl Process {
+    /// 添加一个新的对象句柄
+    pub fn add_handle(&amp;self, handle: Handle) -&gt; HandleValue {
+        let mut inner = self.inner.lock();
+        let value = (0 as HandleValue..)
+            .find(|idx| !inner.handles.contains_key(idx))
+            .unwrap();
+        inner.handles.insert(value, handle);
+        value
+    }
+
+    /// 删除一个对象句柄
+    pub fn remove_handle(&amp;self, handle_value: HandleValue) {
+        self.inner.lock().handles.remove(&amp;handle_value);
+    }
+}
+</code></pre>
+<h2 id="定义内核错误及-result-类型"><a class="header" href="#定义内核错误及-result-类型">定义内核错误及 <code>Result</code> 类型</a></h2>
+<pre><code class="language-rust noplaypen">// src/error.rs
+/// Zircon statuses are signed 32 bit integers. The space of values is
+/// divided as follows:
+/// - The zero value is for the OK status.
+/// - Negative values are defined by the system, in this file.
+/// - Positive values are reserved for protocol-specific error values,
+///   and will never be defined by the system.
+#[allow(non_camel_case_types, dead_code)]
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+pub enum ZxError {
+    OK = 0,
+
+    // ======= Internal failures =======
+    /// The system encountered an otherwise unspecified error
+    /// while performing the operation.
+    INTERNAL = -1,
+
+    /// The operation is not implemented, supported,
+    /// or enabled.
+    NOT_SUPPORTED = -2,
+
+    // ......
+
+    /// Connection was aborted.
+    CONNECTION_ABORTED = -76,
+}
+</code></pre>
+<pre><code class="language-rust noplaypen">// src/error.rs
+///
+pub type ZxResult&lt;T&gt; = Result&lt;T, ZxError&gt;;
+</code></pre>
+<h2 id="根据句柄查找内核对象"><a class="header" href="#根据句柄查找内核对象">根据句柄查找内核对象</a></h2>
 <blockquote>
 <p>实现 get_object_with_rights 等其它相关函数</p>
 <p>实现 handle 单元测试</p>
 </blockquote>
+<pre><code class="language-rust noplaypen">// src/task/process.rs
+impl Process {
+    /// 根据句柄值查找内核对象，并检查权限
+    pub fn get_object_with_rights&lt;T: KernelObject&gt;(
+        &amp;self,
+        handle_value: HandleValue,
+        desired_rights: Rights,
+    ) -&gt; ZxResult&lt;Arc&lt;T&gt;&gt; {
+        let handle = self
+            .inner
+            .lock()
+            .handles
+            .get(&amp;handle_value)
+            .ok_or(ZxError::BAD_HANDLE)?
+            .clone();
+        // check type before rights
+        let object = handle
+            .object
+            .downcast_arc::&lt;T&gt;()
+            .map_err(|_| ZxError::WRONG_TYPE)?;
+        if !handle.rights.contains(desired_rights) {
+            return Err(ZxError::ACCESS_DENIED);
+        }
+        Ok(object)
+    }
+}
+</code></pre>
 
                     </main>
 

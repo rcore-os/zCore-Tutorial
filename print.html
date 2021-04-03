@@ -19,12 +19,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
+        
         <link rel="icon" href="favicon.svg">
+        
+        
         <link rel="shortcut icon" href="favicon.png">
+        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
+        
         <link rel="stylesheet" href="css/print.css" media="print">
+        
 
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
@@ -126,9 +132,11 @@
                     <h1 class="menu-title">简明 zCore 教程</h1>
 
                     <div class="right-buttons">
+                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        
                         
                         <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
@@ -161,8 +169,8 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#简明-zcore-教程" id="简明-zcore-教程">简明 zCore 教程</a></h1>
-<h2><a class="header" href="#自己动手山寨操作系统自顶向下方法" id="自己动手山寨操作系统自顶向下方法">自己动手山寨操作系统：自顶向下方法</a></h2>
+                        <h1 id="简明-zcore-教程"><a class="header" href="#简明-zcore-教程">简明 zCore 教程</a></h1>
+<h2 id="自己动手山寨操作系统自顶向下方法"><a class="header" href="#自己动手山寨操作系统自顶向下方法">自己动手山寨操作系统：自顶向下方法</a></h2>
 <p>zCore 是用 Rust 语言重写的 Zircon 微内核，它是 Google 正在开发的 Fuchsia OS 中的底层内核。</p>
 <p>本教程基于 zCore 的真实开发历史，还原其开发过程。带领读者一步一步用 Rust 实现自己的 Zircon 内核，最终能够运行原生的 shell 程序。
 在此过程中我们将体会 Zircon 微内核的设计理念，感受如何用 Rust 语言以一种现代的方式编写系统软件，在项目中实现理论与实践的融合。</p>
@@ -171,9 +179,9 @@
 <p>鉴于此，本教程假设读者了解操作系统基本概念和原理，具有常用的 Linux 系统使用经验，并且会使用 Rust 语言编写简单程序。
 如果读者不熟悉操作系统和 Rust 语言，希望以自底向上方法从零构建操作系统，<a href="https://rcore-os.github.io/rCore-Tutorial-deploy/">rCore Tutorial</a> 可能是更好的选择。</p>
 <p>如果你准备好了，让我们开始吧！</p>
-<h1><a class="header" href="#zcore-整体结构和设计模式" id="zcore-整体结构和设计模式">zCore 整体结构和设计模式</a></h1>
+<h1 id="zcore-整体结构和设计模式"><a class="header" href="#zcore-整体结构和设计模式">zCore 整体结构和设计模式</a></h1>
 <p>首先，从 <a href="https://github.com/rcore-os/zCore/wiki/files/wrj-thesis.pdf">Rust语言操作系统的设计与实现,王润基本科毕设论文,2019</a> 和 <a href="https://github.com/rcore-os/zCore/wiki/files/pql-thesis.pdf">zCore操作系统内核的设计与实现,潘庆霖本科毕设论文,2020</a> 可以了解到从 rCore 的设计到 zCore 的设计过程的全貌。</p>
-<h2><a class="header" href="#zcore-的整体结构" id="zcore-的整体结构">zCore 的整体结构</a></h2>
+<h2 id="zcore-的整体结构"><a class="header" href="#zcore-的整体结构">zCore 的整体结构</a></h2>
 <p><a href="https://github.com/rcore-os/zCore">zCore</a> 的整体结构/项目设计图如下：</p>
 <p><img src="zcore-intro/structure.svg" alt="img" /></p>
 <p>zCore的设计主要有两个出发点：</p>
@@ -189,20 +197,20 @@
 <p>第五层，是硬件抽象层（HAL，Hardware Abstraction Layer），这里对应的是 kernel-hal 模块。kernel-hal 将向上提供所有操作硬件需要的接口，从而使得硬件环境对上层操作系统透明化。</p>
 <p>第六层，是对直接操作硬件的代码进行一层封装，对应模块为 kernel-hal-bare 和 kernel-hal-unix。kernel-hal 系列库仅仅负责接口定义，即将底层硬件/宿主操作系统的操作翻译为上层操作系统可以使用的形式。在这里，kernel-hal-bare 负责翻译裸机的硬件功能，而 kernel-hal-unix 则负责翻译类 Unix 系统的系统调用。</p>
 <p>最底层是底层运行环境，包括 Bare Metal（裸机），Linux / macOS 操作系统。Bare Metal可以认为是硬件架构上的寄存器等硬件接口。</p>
-<h2><a class="header" href="#zcore-内核组件" id="zcore-内核组件">zCore 内核组件</a></h2>
+<h2 id="zcore-内核组件"><a class="header" href="#zcore-内核组件">zCore 内核组件</a></h2>
 <p>zCore 内核运行时组件层次概况如下：</p>
 <p><img src="zcore-intro/image-20200805123801306.png" alt="image-20200805123801306" /></p>
 <p>在zCore启动过程中，会初始化物理页帧分配器、堆分配器、线程调度器等各个组成部分。并委托 zircon-­loader 进行内核对象的初始化创建过程，然后进入用户态的启动过程开始执行。每当用户态触发系统调用进入内核态，系统调用处理例程将会通过已实现的内核对象的功能来对服务请求进行处理；而对应的内核对象的内部实现所需要的各种底层操作，则是通过 HAL 层接口由各个内核组件负责提供。</p>
 <p>其中，VDSO（Virtual dynamic shared object）是一个映射到用户空间的 so 文件，可以在不陷入内核的情况下执行一些简单的系统调用。在设计中，所有中断都需要经过 VDSO 拦截进行处理，因此重写 VDSO 便可以实现自定义的对下层系统调用（syscall）的支持。Executor 是 zCore 中基于 Rust 的 <code>async</code> 机制的协程调度器。</p>
 <p>在HAL接口层的设计上，还借助了 Rust 的能够指定函数链接过程的特性。即，在 kernel-­hal 中规定了所有可供 zircon­-object 库及 zircon-­syscall 库调用的虚拟硬件接口，以函数 API 的形式给出，但是内部均为未实现状态，并设置函数为弱引用链接状态。在 kernel­-hal-­bare 中才给出裸机环境下的硬件接口具体实现，编译 zCore 项目时、链接的过程中将会替换/覆盖 kernel-­hal 中未实现的同名接口，从而达到能够在编译时灵活选择 HAL 层的效果。</p>
-<h1><a class="header" href="#fuchsia-os-和-zircon-微内核" id="fuchsia-os-和-zircon-微内核">Fuchsia OS 和 Zircon 微内核</a></h1>
-<h1><a class="header" href="#内核对象" id="内核对象">内核对象</a></h1>
+<h1 id="fuchsia-os-和-zircon-微内核"><a class="header" href="#fuchsia-os-和-zircon-微内核">Fuchsia OS 和 Zircon 微内核</a></h1>
+<h1 id="内核对象"><a class="header" href="#内核对象">内核对象</a></h1>
 <p>Zircon 是一个基于内核对象的系统。系统的功能被划分到若干组内核对象中。</p>
 <p>作为一切的开始，本章首先构造了一个内核对象框架，作为后面实现的基础。
 然后我们实现第一个内核对象 —— <code>Process</code>，它是所有对象的容器，也是将来我们操作对象的入口点。
 最后会实现一个稍微复杂但是极其重要的对象 <code>Channel</code>，它是进程间通信（IPC）的基础设施，也是传送对象的唯一管道。</p>
-<h1><a class="header" href="#初识内核对象" id="初识内核对象">初识内核对象</a></h1>
-<h2><a class="header" href="#内核对象简介" id="内核对象简介">内核对象简介</a></h2>
+<h1 id="初识内核对象"><a class="header" href="#初识内核对象">初识内核对象</a></h1>
+<h2 id="内核对象简介"><a class="header" href="#内核对象简介">内核对象简介</a></h2>
 <p>在动手编写我们的代码之前，需要首先进行调研和学习，对目标对象有一个全面系统的了解。
 而了解一个项目设计的最好方式就是阅读官方提供的手册和文档。</p>
 <p>让我们先来阅读一下 Fuchsia 官方文档：<a href="https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects.md">内核对象</a>。这个链接是社区翻译的中文版，已经有些年头了。如果读者能够科学上网，推荐直接阅读<a href="https://fuchsia.dev/fuchsia-src/reference/kernel_objects/objects">官方英文版</a>。</p>
@@ -237,7 +245,7 @@
 信号是 Zircon 内核中很重要的机制，不过这部分在前期不会涉及，我们留到第五章再具体实现。</p>
 <p>以上我们了解了 Zircon 内核对象的相关概念和使用方式。接下来在这一节中，我们将用 Rust 实现内核对象的基本框架，以方便后续快速实现各种具体类型的内核对象。
 从传统面向对象语言的视角看，我们只是在实现一个基类。但由于 Rust 语言模型的限制，这件事情需要用到一些特殊的技巧。</p>
-<h2><a class="header" href="#建立项目" id="建立项目">建立项目</a></h2>
+<h2 id="建立项目"><a class="header" href="#建立项目">建立项目</a></h2>
 <p>首先我们需要安装 Rust 工具链。在 Linux 或 macOS 系统下，只需要用一个命令下载安装 rustup 即可：</p>
 <pre><code class="language-sh">$ curl https://sh.rustup.rs -sSf | sh
 </code></pre>
@@ -248,7 +256,7 @@ $ cd zcore
 </code></pre>
 <p>我们将在这个 crate 中实现所有的内核对象，以库（lib）而不是可执行文件（bin）的形式组织代码，后面我们会依赖单元测试保证代码的正确性。</p>
 <p>由于我们会用到一些不稳定（unstable）的语言特性，需要使用 nightly 版本的工具链。在项目根目录下创建一个 <code>rust-toolchain</code> 文件，指明使用的工具链版本：</p>
-<pre><code class="language-sh">nightly-2020-06-04
+<pre><code class="language-sh">{{#include ../../code/ch01-01/rust-toolchain}}
 </code></pre>
 <p>这个程序库目前是在你的 Linux 或 macOS 上运行，但有朝一日它会成为一个真正的 OS 在裸机上运行。
 为此我们需要移除对标准库的依赖，使其成为一个不依赖当前 OS 功能的库。在 <code>lib.rs</code> 的第一行添加声明：</p>
@@ -266,7 +274,7 @@ test tests::it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 </code></pre>
-<h2><a class="header" href="#实现-kernelobject-接口" id="实现-kernelobject-接口">实现 KernelObject 接口</a></h2>
+<h2 id="实现-kernelobject-接口"><a class="header" href="#实现-kernelobject-接口">实现 KernelObject 接口</a></h2>
 <p>所有的内核对象有一系列共同的属性和方法，我们称这些方法为对象的公共<strong>接口（Interface）</strong>。
 同一种方法在不同类型的对象中可能会有不同的行为，在面向对象语言中我们称其为<strong>多态（Polymorphism）</strong>。</p>
 <p>Rust 是一门部分面向对象的语言，我们通常用它的 trait 实现接口和多态。</p>
@@ -291,7 +299,7 @@ pub type KoID = u64;
 <p>这里的 <a href="https://kaisery.github.io/trpl-zh-cn/ch16-04-extensible-concurrency-sync-and-send.html"><code>Send + Sync</code></a> 是一个约束所有 <code>KernelObject</code> 都要满足的前提条件，即它必须是一个<strong>并发对象</strong>。
 所谓并发对象指的是<strong>可以安全地被多线程共享访问</strong>。事实上我们的内核本身就是一个共享地址空间的多线程程序，在裸机上每个 CPU 核都可以被视为一个并发执行的线程。
 由于内核对象可能被多个线程同时访问，因此它必须是并发对象。</p>
-<h2><a class="header" href="#实现一个空对象" id="实现一个空对象">实现一个空对象</a></h2>
+<h2 id="实现一个空对象"><a class="header" href="#实现一个空对象">实现一个空对象</a></h2>
 <p>接下来我们实现一个最简单的空对象 <code>DummyObject</code>，并为它实现 <code>KernelObject</code> 接口：</p>
 <pre><code class="language-rust noplaypen">// src/object/object.rs
 use spin::Mutex;
@@ -314,7 +322,7 @@ struct DummyObjectInner {
 数据被 <code>Mutex</code> 包起来之后需要首先使用 <a href="https://docs.rs/spin/0.5.2/spin/struct.Mutex.html#method.lock"><code>lock()</code></a> 拿到锁之后才能访问。此时并发访问已经安全，因此被包起来的结构自动具有了 <code>Send + Sync</code> 特性。</p>
 <p>使用自旋锁引入了新的依赖库 <a href="https://docs.rs/spin/0.5.2/spin/index.html"><code>spin</code></a> ，需要在 <code>Cargo.toml</code> 中加入以下声明：</p>
 <pre><code class="language-toml">[dependencies]
-spin = &quot;0.5&quot;
+spin = &quot;0.7&quot;
 </code></pre>
 <p>然后我们为新对象实现构造函数：</p>
 <pre><code class="language-rust noplaypen">// src/object/object.rs
@@ -384,7 +392,7 @@ running 1 test
 test tests::dummy_object ... ok
 </code></pre>
 <p>大功告成！让我们用 <code>cargo fmt</code> 命令格式化一下代码，然后记得 <code>git commit</code> 及时保存进展。</p>
-<h2><a class="header" href="#实现接口到具体类型的向下转换" id="实现接口到具体类型的向下转换">实现接口到具体类型的向下转换</a></h2>
+<h2 id="实现接口到具体类型的向下转换"><a class="header" href="#实现接口到具体类型的向下转换">实现接口到具体类型的向下转换</a></h2>
 <p>在系统调用中，用户进程会传入一个内核对象的句柄，然后内核会根据系统调用的类型，尝试将其转换成特定类型的对象。
 于是这里产生了一个很重要的需求：将接口 <code>Arc&lt;dyn KernelObject&gt;</code> 转换成具体类型的结构 <code>Arc&lt;T&gt; where T: KernelObject</code>。
 这种操作在面向对象语言中称为<strong>向下转换（downcast）</strong>。</p>
@@ -445,7 +453,7 @@ running 2 tests
 test object::downcast ... ok
 test object::tests::dummy_object ... ok
 </code></pre>
-<h2><a class="header" href="#模拟继承用宏自动生成接口实现代码" id="模拟继承用宏自动生成接口实现代码">模拟继承：用宏自动生成接口实现代码</a></h2>
+<h2 id="模拟继承用宏自动生成接口实现代码"><a class="header" href="#模拟继承用宏自动生成接口实现代码">模拟继承：用宏自动生成接口实现代码</a></h2>
 <p>上面我们已经完整实现了一个内核对象，代码看起来很简洁。但当我们要实现更多对象的时候，就会发现一个问题：
 这些对象拥有一些公共属性，接口方法也有共同的实现。
 在传统 OOP 语言中，我们通常使用 <strong>继承（inheritance）</strong> 来复用这些公共代码：子类 B 可以继承父类 A，然后自动拥有父类的所有字段和方法。</p>
@@ -583,7 +591,7 @@ fn impl_kobject() {
 <pre><code class="language-rust noplaypen">#[KernelObject]
 pub struct DummyObject;
 </code></pre>
-<h2><a class="header" href="#总结" id="总结">总结</a></h2>
+<h2 id="总结"><a class="header" href="#总结">总结</a></h2>
 <p>在这一节中我们用 Rust 语言实现了 Zircon 最核心的<strong>内核对象</strong>概念。在此过程中涉及到 Rust 的一系列语言特性和设计模式：</p>
 <ul>
 <li>使用 <strong>trait</strong> 实现接口</li>
@@ -594,36 +602,206 @@ pub struct DummyObject;
 <p>由于 Rust 独特的<a href="https://kaisery.github.io/trpl-zh-cn/ch17-00-oop.html">面向对象编程特性</a>，我们在实现内核对象的过程中遇到了一定的挑战。
 不过万事开头难，解决这些问题为整个项目打下了坚实基础，后面实现新的内核对象就会变得简单很多。</p>
 <p>在下一节中，我们将介绍内核对象相关的另外两个概念：句柄和权限，并实现内核对象的存储和访问。</p>
-<h1><a class="header" href="#对象管理器process-对象" id="对象管理器process-对象">对象管理器：Process 对象</a></h1>
-<h2><a class="header" href="#句柄和权限" id="句柄和权限">句柄和权限</a></h2>
+<h1 id="对象管理器process-对象"><a class="header" href="#对象管理器process-对象">对象管理器：Process 对象</a></h1>
+<h2 id="句柄和权限"><a class="header" href="#句柄和权限">句柄和权限</a></h2>
 <blockquote>
 <p>介绍并实现 Handle，Rights</p>
 </blockquote>
-<h2><a class="header" href="#实现第一个内核对象" id="实现第一个内核对象">实现第一个内核对象</a></h2>
-<blockquote>
-<p>使用上一节的方法，实现一个空的 Process 对象</p>
-</blockquote>
-<h2><a class="header" href="#存储内核对象句柄" id="存储内核对象句柄">存储内核对象句柄</a></h2>
+<p>在 <code>Cargo.toml</code> 中加入 <code>bitflags</code> 库：</p>
+<pre><code class="language-rust noplaypen">[dependencies]
+bitflags = &quot;1.2&quot;
+</code></pre>
+<p>在 object 模块下定义两个子模块：</p>
+<pre><code class="language-rust noplaypen">// src/object/mod.rs
+mod handle;
+mod rights;
+
+pub use self::handle::*;
+pub use self::rights::*;
+</code></pre>
+<p>定义权限：</p>
+<pre><code class="language-rust noplaypen">// src/object/rights.rs
+use bitflags::bitflags;
+
+bitflags! {
+    /// 句柄权限
+    pub struct Rights: u32 {
+        const DUPLICATE = 1 &lt;&lt; 0;
+        const TRANSFER = 1 &lt;&lt; 1;
+        const READ = 1 &lt;&lt; 2;
+        const WRITE = 1 &lt;&lt; 3;
+        const EXECUTE = 1 &lt;&lt; 4;
+        const MAP = 1 &lt;&lt; 5;
+        const GET_PROPERTY = 1 &lt;&lt; 6;
+        const SET_PROPERTY = 1 &lt;&lt; 7;
+        const ENUMERATE = 1 &lt;&lt; 8;
+        const DESTROY = 1 &lt;&lt; 9;
+        const SET_POLICY = 1 &lt;&lt; 10;
+        const GET_POLICY = 1 &lt;&lt; 11;
+        const SIGNAL = 1 &lt;&lt; 12;
+        const SIGNAL_PEER = 1 &lt;&lt; 13;
+        const WAIT = 1 &lt;&lt; 14;
+        const INSPECT = 1 &lt;&lt; 15;
+        const MANAGE_JOB = 1 &lt;&lt; 16;
+        const MANAGE_PROCESS = 1 &lt;&lt; 17;
+        const MANAGE_THREAD = 1 &lt;&lt; 18;
+        const APPLY_PROFILE = 1 &lt;&lt; 19;
+        const SAME_RIGHTS = 1 &lt;&lt; 31;
+
+        const BASIC = Self::TRANSFER.bits | Self::DUPLICATE.bits | Self::WAIT.bits | Self::INSPECT.bits;
+        const IO = Self::READ.bits | Self::WRITE.bits;
+
+        const DEFAULT_CHANNEL = Self::BASIC.bits &amp; !Self::DUPLICATE.bits | Self::IO.bits | Self::SIGNAL.bits | Self::SIGNAL_PEER.bits;
+    }
+}
+</code></pre>
+<p>定义句柄：</p>
+<pre><code class="language-rust noplaypen">// src/object/handle.rs
+use super::{KernelObject, Rights};
+use alloc::sync::Arc;
+
+/// 内核对象句柄
+#[derive(Clone)]
+pub struct Handle {
+    pub object: Arc&lt;dyn KernelObject&gt;,
+    pub rights: Rights,
+}
+
+impl Handle {
+    /// 创建一个新句柄
+    pub fn new(object: Arc&lt;dyn KernelObject&gt;, rights: Rights) -&gt; Self {
+        Handle { object, rights }
+    }
+}
+</code></pre>
+<h2 id="存储内核对象句柄"><a class="header" href="#存储内核对象句柄">存储内核对象句柄</a></h2>
 <blockquote>
 <p>添加成员变量 handles: BTreeMap&lt;HandleValue, Handle&gt;</p>
 <p>实现 create，add_handle，remove_handle 函数</p>
 </blockquote>
-<h2><a class="header" href="#根据句柄查找内核对象" id="根据句柄查找内核对象">根据句柄查找内核对象</a></h2>
+<p>使用上一节的方法，实现一个空的 Process 对象：</p>
+<pre><code class="language-rust noplaypen">// src/task/process.rs
+/// 进程对象
+pub struct Process {
+    base: KObjectBase,
+    inner: Mutex&lt;ProcessInner&gt;,
+}
+
+impl_kobject!(Process);
+
+struct ProcessInner {
+    handles: BTreeMap&lt;HandleValue, Handle&gt;,
+}
+
+pub type HandleValue = u32;
+
+impl Process {
+    /// 创建一个新的进程对象
+    pub fn new() -&gt; Arc&lt;Self&gt; {
+        Arc::new(Process {
+            base: KObjectBase::default(),
+            inner: Mutex::new(ProcessInner {
+                handles: BTreeMap::default(),
+            }),
+        })
+    }
+}
+</code></pre>
+<p>插入、删除句柄函数：</p>
+<pre><code class="language-rust noplaypen">// src/task/process.rs
+impl Process {
+    /// 添加一个新的对象句柄
+    pub fn add_handle(&amp;self, handle: Handle) -&gt; HandleValue {
+        let mut inner = self.inner.lock();
+        let value = (0 as HandleValue..)
+            .find(|idx| !inner.handles.contains_key(idx))
+            .unwrap();
+        inner.handles.insert(value, handle);
+        value
+    }
+
+    /// 删除一个对象句柄
+    pub fn remove_handle(&amp;self, handle_value: HandleValue) {
+        self.inner.lock().handles.remove(&amp;handle_value);
+    }
+}
+</code></pre>
+<h2 id="定义内核错误及-result-类型"><a class="header" href="#定义内核错误及-result-类型">定义内核错误及 <code>Result</code> 类型</a></h2>
+<pre><code class="language-rust noplaypen">// src/error.rs
+/// Zircon statuses are signed 32 bit integers. The space of values is
+/// divided as follows:
+/// - The zero value is for the OK status.
+/// - Negative values are defined by the system, in this file.
+/// - Positive values are reserved for protocol-specific error values,
+///   and will never be defined by the system.
+#[allow(non_camel_case_types, dead_code)]
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+pub enum ZxError {
+    OK = 0,
+
+    // ======= Internal failures =======
+    /// The system encountered an otherwise unspecified error
+    /// while performing the operation.
+    INTERNAL = -1,
+
+    /// The operation is not implemented, supported,
+    /// or enabled.
+    NOT_SUPPORTED = -2,
+
+    // ......
+
+    /// Connection was aborted.
+    CONNECTION_ABORTED = -76,
+}
+</code></pre>
+<pre><code class="language-rust noplaypen">// src/error.rs
+///
+pub type ZxResult&lt;T&gt; = Result&lt;T, ZxError&gt;;
+</code></pre>
+<h2 id="根据句柄查找内核对象"><a class="header" href="#根据句柄查找内核对象">根据句柄查找内核对象</a></h2>
 <blockquote>
 <p>实现 get_object_with_rights 等其它相关函数</p>
 <p>实现 handle 单元测试</p>
 </blockquote>
-<h1><a class="header" href="#对象传送器channel-对象" id="对象传送器channel-对象">对象传送器：Channel 对象</a></h1>
-<h2><a class="header" href="#创建一对内核对象" id="创建一对内核对象">创建一对内核对象</a></h2>
+<pre><code class="language-rust noplaypen">// src/task/process.rs
+impl Process {
+    /// 根据句柄值查找内核对象，并检查权限
+    pub fn get_object_with_rights&lt;T: KernelObject&gt;(
+        &amp;self,
+        handle_value: HandleValue,
+        desired_rights: Rights,
+    ) -&gt; ZxResult&lt;Arc&lt;T&gt;&gt; {
+        let handle = self
+            .inner
+            .lock()
+            .handles
+            .get(&amp;handle_value)
+            .ok_or(ZxError::BAD_HANDLE)?
+            .clone();
+        // check type before rights
+        let object = handle
+            .object
+            .downcast_arc::&lt;T&gt;()
+            .map_err(|_| ZxError::WRONG_TYPE)?;
+        if !handle.rights.contains(desired_rights) {
+            return Err(ZxError::ACCESS_DENIED);
+        }
+        Ok(object)
+    }
+}
+</code></pre>
+<h1 id="对象传送器channel-对象"><a class="header" href="#对象传送器channel-对象">对象传送器：Channel 对象</a></h1>
+<h2 id="创建一对内核对象"><a class="header" href="#创建一对内核对象">创建一对内核对象</a></h2>
 <blockquote>
 <p>实现 Channel::create</p>
 <p>讲一下互相持有对方 Weak 指针的目的，这里有不可避免的 unsafe</p>
 </blockquote>
-<h2><a class="header" href="#实现数据传输" id="实现数据传输">实现数据传输</a></h2>
+<h2 id="实现数据传输"><a class="header" href="#实现数据传输">实现数据传输</a></h2>
 <blockquote>
 <p>实现 read, write 函数，read_write 单元测试</p>
 </blockquote>
-<h1><a class="header" href="#任务管理" id="任务管理">任务管理</a></h1>
+<h1 id="任务管理"><a class="header" href="#任务管理">任务管理</a></h1>
 <p>本章我们来实现第一类内核对象：任务管理（Tasks）。</p>
 <p>任务对象主要包括：线程 <code>Thread</code>，进程 <code>Process</code>，作业 <code>Job</code>。以及一些辅助性的对象，例如负责暂停任务执行的 <code>SuspendToken</code> 和负责处理异常的 <code>Exception</code>。</p>
 <p>为了能够真实表现线程对象的行为，我们使用 Rust async 运行时 <a href="https://docs.rs/async-std/1.6.2/async_std/index.html"><code>async_std</code></a> 中的<strong>用户态协程</strong>来模拟<strong>内核线程</strong>。
@@ -631,215 +809,215 @@ pub struct DummyObject;
 考虑到未来这个 OS 会跑在裸机环境中，将会有不同的内核线程的实现，我们创建一个特殊的<strong>硬件抽象层（Hardware Abstraction Layer，HAL）</strong>，来屏蔽底层平台的差异，对上提供一个统一的接口。
 这个 HAL 的接口未来会根据需要进行扩充。</p>
 <p>本章中我们只会实现运行一个程序所必需的最小功能子集，剩下的部分则留到跑起用户程序之后再按需实现。</p>
-<h1><a class="header" href="#zircon-任务管理体系" id="zircon-任务管理体系">Zircon 任务管理体系</a></h1>
-<h1><a class="header" href="#进程管理process-与-job-对象" id="进程管理process-与-job-对象">进程管理：Process 与 Job 对象</a></h1>
-<h2><a class="header" href="#process-与-job" id="process-与-job">Process 与 Job</a></h2>
+<h1 id="zircon-任务管理体系"><a class="header" href="#zircon-任务管理体系">Zircon 任务管理体系</a></h1>
+<h1 id="进程管理process-与-job-对象"><a class="header" href="#进程管理process-与-job-对象">进程管理：Process 与 Job 对象</a></h1>
+<h2 id="process-与-job"><a class="header" href="#process-与-job">Process 与 Job</a></h2>
 <blockquote>
 <p>介绍 Process 与 Job 的整体设计</p>
 <p>实现 Process 和 Job 对象的基本框架，支持树状结构</p>
 </blockquote>
-<h2><a class="header" href="#job-policy-策略" id="job-policy-策略">Job Policy 策略</a></h2>
+<h2 id="job-policy-策略"><a class="header" href="#job-policy-策略">Job Policy 策略</a></h2>
 <blockquote>
 <p>实现 JobPolicy</p>
 </blockquote>
-<h1><a class="header" href="#线程管理thread-对象" id="线程管理thread-对象">线程管理：Thread 对象</a></h1>
-<h2><a class="header" href="#线程状态" id="线程状态">线程状态</a></h2>
+<h1 id="线程管理thread-对象"><a class="header" href="#线程管理thread-对象">线程管理：Thread 对象</a></h1>
+<h2 id="线程状态"><a class="header" href="#线程状态">线程状态</a></h2>
 <blockquote>
 <p>状态转移：创建 -&gt; 运行 -&gt; 暂停 -&gt; 退出，最好有个状态机的图</p>
 <p>实现 ThreadState，最好能加一个单元测试来验证转移过程</p>
 </blockquote>
-<h2><a class="header" href="#线程寄存器上下文" id="线程寄存器上下文">线程寄存器上下文</a></h2>
+<h2 id="线程寄存器上下文"><a class="header" href="#线程寄存器上下文">线程寄存器上下文</a></h2>
 <blockquote>
 <p>定义 ThreadState，实现 read_state，write_state</p>
 </blockquote>
-<h2><a class="header" href="#async-运行时和-hal-硬件抽象层" id="async-运行时和-hal-硬件抽象层">Async 运行时和 HAL 硬件抽象层</a></h2>
+<h2 id="async-运行时和-hal-硬件抽象层"><a class="header" href="#async-运行时和-hal-硬件抽象层">Async 运行时和 HAL 硬件抽象层</a></h2>
 <blockquote>
 <p>简单介绍 async-std 的异步机制</p>
 <p>介绍 HAL 的实现方法：弱链接</p>
 <p>实现 hal_thread_spawn</p>
 </blockquote>
-<h2><a class="header" href="#线程启动" id="线程启动">线程启动</a></h2>
+<h2 id="线程启动"><a class="header" href="#线程启动">线程启动</a></h2>
 <blockquote>
 <p>将 HAL 接入 Thread::start，编写单元测试验证能启动多线程</p>
 </blockquote>
-<h1><a class="header" href="#内存管理" id="内存管理">内存管理</a></h1>
-<h1><a class="header" href="#zircon-内存管理模型" id="zircon-内存管理模型">Zircon 内存管理模型</a></h1>
-<h1><a class="header" href="#物理内存vmo-对象" id="物理内存vmo-对象">物理内存：VMO 对象</a></h1>
-<h2><a class="header" href="#vmo-简介" id="vmo-简介">VMO 简介</a></h2>
+<h1 id="内存管理"><a class="header" href="#内存管理">内存管理</a></h1>
+<h1 id="zircon-内存管理模型"><a class="header" href="#zircon-内存管理模型">Zircon 内存管理模型</a></h1>
+<h1 id="物理内存vmo-对象"><a class="header" href="#物理内存vmo-对象">物理内存：VMO 对象</a></h1>
+<h2 id="vmo-简介"><a class="header" href="#vmo-简介">VMO 简介</a></h2>
 <blockquote>
 <p>根据文档梳理 VMO 的主要特性</p>
 </blockquote>
-<h2><a class="header" href="#实现-vmo-对象框架" id="实现-vmo-对象框架">实现 VMO 对象框架</a></h2>
+<h2 id="实现-vmo-对象框架"><a class="header" href="#实现-vmo-对象框架">实现 VMO 对象框架</a></h2>
 <blockquote>
 <p>实现 VmObject 结构，其中定义 VmObjectTrait 接口，并提供三个具体实现 Paged, Physical, Slice</p>
 </blockquote>
-<h2><a class="header" href="#hal用文件模拟物理内存" id="hal用文件模拟物理内存">HAL：用文件模拟物理内存</a></h2>
+<h2 id="hal用文件模拟物理内存"><a class="header" href="#hal用文件模拟物理内存">HAL：用文件模拟物理内存</a></h2>
 <blockquote>
 <p>初步介绍 mmap，引出用文件模拟物理内存的思想</p>
 <p>创建文件并用 mmap 线性映射到进程地址空间</p>
 <p>实现 pmem_read, pmem_write</p>
 </blockquote>
-<h2><a class="header" href="#实现物理内存-vmo" id="实现物理内存-vmo">实现物理内存 VMO</a></h2>
+<h2 id="实现物理内存-vmo"><a class="header" href="#实现物理内存-vmo">实现物理内存 VMO</a></h2>
 <blockquote>
 <p>用 HAL 实现 VmObjectPhysical 的方法，并做单元测试</p>
 </blockquote>
-<h2><a class="header" href="#实现切片-vmo" id="实现切片-vmo">实现切片 VMO</a></h2>
+<h2 id="实现切片-vmo"><a class="header" href="#实现切片-vmo">实现切片 VMO</a></h2>
 <blockquote>
 <p>实现 VmObjectSlice，并做单元测试</p>
 </blockquote>
-<h1><a class="header" href="#物理内存按页分配的-vmo" id="物理内存按页分配的-vmo">物理内存：按页分配的 VMO</a></h1>
-<h2><a class="header" href="#简介" id="简介">简介</a></h2>
+<h1 id="物理内存按页分配的-vmo"><a class="header" href="#物理内存按页分配的-vmo">物理内存：按页分配的 VMO</a></h1>
+<h2 id="简介"><a class="header" href="#简介">简介</a></h2>
 <blockquote>
 <p>说明一下：Zircon 的官方实现中为了高效支持写时复制，使用了复杂精巧的树状数据结构，但它同时也引入了复杂性和各种 Bug。
 我们在这里只实现一个简单版本，完整实现留给读者自行探索。</p>
 <p>介绍 commit 操作的意义和作用</p>
 </blockquote>
-<h2><a class="header" href="#hal物理内存管理" id="hal物理内存管理">HAL：物理内存管理</a></h2>
+<h2 id="hal物理内存管理"><a class="header" href="#hal物理内存管理">HAL：物理内存管理</a></h2>
 <blockquote>
 <p>在 HAL 中实现 PhysFrame 和最简单的分配器</p>
 </blockquote>
-<h2><a class="header" href="#辅助结构blockrange-迭代器" id="辅助结构blockrange-迭代器">辅助结构：BlockRange 迭代器</a></h2>
+<h2 id="辅助结构blockrange-迭代器"><a class="header" href="#辅助结构blockrange-迭代器">辅助结构：BlockRange 迭代器</a></h2>
 <blockquote>
 <p>实现 BlockRange</p>
 </blockquote>
-<h2><a class="header" href="#实现按页分配的-vmo" id="实现按页分配的-vmo">实现按页分配的 VMO</a></h2>
+<h2 id="实现按页分配的-vmo"><a class="header" href="#实现按页分配的-vmo">实现按页分配的 VMO</a></h2>
 <blockquote>
 <p>实现 for_each_page, commit, read, write 函数</p>
 </blockquote>
-<h2><a class="header" href="#vmo-复制" id="vmo-复制">VMO 复制</a></h2>
+<h2 id="vmo-复制"><a class="header" href="#vmo-复制">VMO 复制</a></h2>
 <blockquote>
 <p>实现 create_child 函数</p>
 </blockquote>
-<h1><a class="header" href="#虚拟内存vmar-对象" id="虚拟内存vmar-对象">虚拟内存：VMAR 对象</a></h1>
-<h2><a class="header" href="#vmar-简介" id="vmar-简介">VMAR 简介</a></h2>
-<h2><a class="header" href="#实现-vmar-对象框架" id="实现-vmar-对象框架">实现 VMAR 对象框架</a></h2>
+<h1 id="虚拟内存vmar-对象"><a class="header" href="#虚拟内存vmar-对象">虚拟内存：VMAR 对象</a></h1>
+<h2 id="vmar-简介"><a class="header" href="#vmar-简介">VMAR 简介</a></h2>
+<h2 id="实现-vmar-对象框架"><a class="header" href="#实现-vmar-对象框架">实现 VMAR 对象框架</a></h2>
 <blockquote>
 <p>定义 VmAddressRange，VmMapping</p>
 <p>实现 create_child, map, unmap, destroy 函数，并做单元测试验证地址空间分配</p>
 </blockquote>
-<h2><a class="header" href="#hal用-mmap-模拟页表" id="hal用-mmap-模拟页表">HAL：用 mmap 模拟页表</a></h2>
+<h2 id="hal用-mmap-模拟页表"><a class="header" href="#hal用-mmap-模拟页表">HAL：用 mmap 模拟页表</a></h2>
 <blockquote>
 <p>实现页表接口 map, unmap, protect</p>
 </blockquote>
-<h2><a class="header" href="#实现内存映射" id="实现内存映射">实现内存映射</a></h2>
+<h2 id="实现内存映射"><a class="header" href="#实现内存映射">实现内存映射</a></h2>
 <blockquote>
 <p>用 HAL 实现上面 VMAR 留空的部分，并做单元测试验证内存映射</p>
 </blockquote>
-<h1><a class="header" href="#用户程序" id="用户程序">用户程序</a></h1>
-<h1><a class="header" href="#zircon-用户程序" id="zircon-用户程序">Zircon 用户程序</a></h1>
-<h2><a class="header" href="#用户态启动流程" id="用户态启动流程">用户态启动流程</a></h2>
+<h1 id="用户程序"><a class="header" href="#用户程序">用户程序</a></h1>
+<h1 id="zircon-用户程序"><a class="header" href="#zircon-用户程序">Zircon 用户程序</a></h1>
+<h2 id="用户态启动流程"><a class="header" href="#用户态启动流程">用户态启动流程</a></h2>
 <blockquote>
 <p>kernel -&gt; userboot -&gt; bootsvc -&gt; component_manager -&gt; sh / device_manager</p>
 <p>ZBI 与 bootfs：ZBI 中包含初始文件系统 bootfs，内核将 ZBI 完整传递给 userboot，由它负责解析并对其它进程提供文件服务</p>
 </blockquote>
-<h2><a class="header" href="#用户程序的组成" id="用户程序的组成">用户程序的组成</a></h2>
+<h2 id="用户程序的组成"><a class="header" href="#用户程序的组成">用户程序的组成</a></h2>
 <blockquote>
 <p>内核不直接参与用户程序的加载工作（第一个进程除外）</p>
 <p>用户程序强制使用 PIC 和 PIE（位置无关代码）</p>
 <p>内存地址空间组成：Program, Stack, vDSO, Dylibs</p>
 <p>通过 Channel 传递启动信息和句柄</p>
 </blockquote>
-<h2><a class="header" href="#加载-elf-文件" id="加载-elf-文件">加载 ELF 文件</a></h2>
+<h2 id="加载-elf-文件"><a class="header" href="#加载-elf-文件">加载 ELF 文件</a></h2>
 <blockquote>
 <p>简单介绍 ELF 文件的组成结构</p>
 <p>实现 VmarExt::load_from_elf 函数</p>
 </blockquote>
-<h2><a class="header" href="#系统调用的跳板vdso" id="系统调用的跳板vdso">系统调用的跳板：vDSO</a></h2>
+<h2 id="系统调用的跳板vdso"><a class="header" href="#系统调用的跳板vdso">系统调用的跳板：vDSO</a></h2>
 <blockquote>
 <p>介绍 vDSO 的作用</p>
 <p>如何修改 vDSO 源码（libzircon）将 syscall 改为函数调用</p>
 <p>加载 vDSO 时修改 vDSO 代码段，填入跳转地址</p>
 </blockquote>
-<h2><a class="header" href="#第一个用户程序userboot" id="第一个用户程序userboot">第一个用户程序：userboot</a></h2>
+<h2 id="第一个用户程序userboot"><a class="header" href="#第一个用户程序userboot">第一个用户程序：userboot</a></h2>
 <blockquote>
 <p>实现 zircon-loader 中的 run_userboot 函数</p>
 <p>能够进入用户态并在第一个系统调用时跳转回来</p>
 </blockquote>
-<h1><a class="header" href="#上下文切换" id="上下文切换">上下文切换</a></h1>
+<h1 id="上下文切换"><a class="header" href="#上下文切换">上下文切换</a></h1>
 <blockquote>
 <p>本节介绍 trapframe-rs 中 <a href="https://github.com/rcore-os/trapframe-rs/blob/master/src/arch/x86_64/fncall.rs">fncall.rs</a> 的魔法实现</p>
 </blockquote>
-<h2><a class="header" href="#保存和恢复通用寄存器" id="保存和恢复通用寄存器">保存和恢复通用寄存器</a></h2>
+<h2 id="保存和恢复通用寄存器"><a class="header" href="#保存和恢复通用寄存器">保存和恢复通用寄存器</a></h2>
 <blockquote>
 <p>定义 UserContext 结构体</p>
 <p>保存 callee-saved 寄存器到栈上，恢复 UserContext 寄存器，进入用户态，反之亦然</p>
 </blockquote>
-<h2><a class="header" href="#找回内核上下文线程局部存储-与-fs-寄存器" id="找回内核上下文线程局部存储-与-fs-寄存器">找回内核上下文：线程局部存储 与 FS 寄存器</a></h2>
+<h2 id="找回内核上下文线程局部存储-与-fs-寄存器"><a class="header" href="#找回内核上下文线程局部存储-与-fs-寄存器">找回内核上下文：线程局部存储 与 FS 寄存器</a></h2>
 <blockquote>
 <p>在用户程序跳转回内核代码的那一刻，如何在不破坏用户寄存器的情况下切换回内核栈？</p>
 <p>进入用户态前，将内核栈指针保存在内核 glibc 的 TLS 区域中。为此我们需要查看 glibc 源码，找到一个空闲位置。</p>
 <p>Linux 和 macOS 下如何分别通过系统调用设置 fsbase / gsbase</p>
 </blockquote>
-<h2><a class="header" href="#测试" id="测试">测试</a></h2>
+<h2 id="测试"><a class="header" href="#测试">测试</a></h2>
 <blockquote>
 <p>编写单元测试验证上述过程</p>
 </blockquote>
-<h2><a class="header" href="#macos-的麻烦动态二进制修改" id="macos-的麻烦动态二进制修改">macOS 的麻烦：动态二进制修改</a></h2>
+<h2 id="macos-的麻烦动态二进制修改"><a class="header" href="#macos-的麻烦动态二进制修改">macOS 的麻烦：动态二进制修改</a></h2>
 <blockquote>
 <p>由于 macOS 用户程序无法修改 fs 寄存器，当运行相关指令时会访问非法内存地址触发段错误。</p>
 <p>我们需要实现段错误信号处理函数，并在其中动态修改用户程序指令，将 fs 改为 gs。</p>
 </blockquote>
-<h1><a class="header" href="#系统调用" id="系统调用">系统调用</a></h1>
-<h2><a class="header" href="#获取系统调用参数" id="获取系统调用参数">获取系统调用参数</a></h2>
+<h1 id="系统调用"><a class="header" href="#系统调用">系统调用</a></h1>
+<h2 id="获取系统调用参数"><a class="header" href="#获取系统调用参数">获取系统调用参数</a></h2>
 <blockquote>
 <p>从寄存器中获取参数</p>
 </blockquote>
-<h2><a class="header" href="#系统调用上下文与处理函数" id="系统调用上下文与处理函数">系统调用上下文与处理函数</a></h2>
+<h2 id="系统调用上下文与处理函数"><a class="header" href="#系统调用上下文与处理函数">系统调用上下文与处理函数</a></h2>
 <blockquote>
 <p>定义 Syscall 结构体，实现 syscall 函数</p>
 </blockquote>
-<h2><a class="header" href="#实现第一个系统调用" id="实现第一个系统调用">实现第一个系统调用</a></h2>
+<h2 id="实现第一个系统调用"><a class="header" href="#实现第一个系统调用">实现第一个系统调用</a></h2>
 <blockquote>
 <p>实现 sys_channel_read 和 sys_debuglog_write</p>
 </blockquote>
-<h1><a class="header" href="#信号和等待" id="信号和等待">信号和等待</a></h1>
-<h1><a class="header" href="#等待内核对象的信号" id="等待内核对象的信号">等待内核对象的信号</a></h1>
-<h2><a class="header" href="#信号与等待机制简介" id="信号与等待机制简介">信号与等待机制简介</a></h2>
-<h2><a class="header" href="#在内核对象中加入信号" id="在内核对象中加入信号">在内核对象中加入信号</a></h2>
+<h1 id="信号和等待"><a class="header" href="#信号和等待">信号和等待</a></h1>
+<h1 id="等待内核对象的信号"><a class="header" href="#等待内核对象的信号">等待内核对象的信号</a></h1>
+<h2 id="信号与等待机制简介"><a class="header" href="#信号与等待机制简介">信号与等待机制简介</a></h2>
+<h2 id="在内核对象中加入信号"><a class="header" href="#在内核对象中加入信号">在内核对象中加入信号</a></h2>
 <blockquote>
 <p>定义 Signal 结构体</p>
 <p>在 KObjectBase 中加入 signal 和 callbacks 变量，实现 signal 系列函数，并做单元测试</p>
 </blockquote>
-<h2><a class="header" href="#实现信号等待-future" id="实现信号等待-future">实现信号等待 Future</a></h2>
+<h2 id="实现信号等待-future"><a class="header" href="#实现信号等待-future">实现信号等待 Future</a></h2>
 <blockquote>
 <p>实现 wait_signal 函数，并做单元测试</p>
 </blockquote>
-<h2><a class="header" href="#利用-select-组合子实现多对象等待" id="利用-select-组合子实现多对象等待">利用 select 组合子实现多对象等待</a></h2>
+<h2 id="利用-select-组合子实现多对象等待"><a class="header" href="#利用-select-组合子实现多对象等待">利用 select 组合子实现多对象等待</a></h2>
 <blockquote>
 <p>实现 wait_signal_many 函数，并做单元测试</p>
 </blockquote>
-<h1><a class="header" href="#同时等待多个信号port-对象" id="同时等待多个信号port-对象">同时等待多个信号：Port 对象</a></h1>
-<h2><a class="header" href="#port-对象简介" id="port-对象简介">Port 对象简介</a></h2>
+<h1 id="同时等待多个信号port-对象"><a class="header" href="#同时等待多个信号port-对象">同时等待多个信号：Port 对象</a></h1>
+<h2 id="port-对象简介"><a class="header" href="#port-对象简介">Port 对象简介</a></h2>
 <blockquote>
 <p>同时提及一下 Linux 的 epoll 机制作为对比</p>
 </blockquote>
-<h2><a class="header" href="#实现-port-对象框架" id="实现-port-对象框架">实现 Port 对象框架</a></h2>
+<h2 id="实现-port-对象框架"><a class="header" href="#实现-port-对象框架">实现 Port 对象框架</a></h2>
 <blockquote>
 <p>定义 Port 和 PortPacket 结构体</p>
 </blockquote>
-<h2><a class="header" href="#实现事件推送和等待" id="实现事件推送和等待">实现事件推送和等待</a></h2>
+<h2 id="实现事件推送和等待"><a class="header" href="#实现事件推送和等待">实现事件推送和等待</a></h2>
 <blockquote>
 <p>实现 KernelObject::send_signal_to_port 和 Port::wait 函数，并做单元测试</p>
 </blockquote>
-<h1><a class="header" href="#实现更多eventpair-timer-对象" id="实现更多eventpair-timer-对象">实现更多：EventPair, Timer 对象</a></h1>
-<h2><a class="header" href="#event-对象" id="event-对象">Event 对象</a></h2>
-<h2><a class="header" href="#eventpair-对象" id="eventpair-对象">EventPair 对象</a></h2>
-<h2><a class="header" href="#hal定时器" id="hal定时器">HAL：定时器</a></h2>
+<h1 id="实现更多eventpair-timer-对象"><a class="header" href="#实现更多eventpair-timer-对象">实现更多：EventPair, Timer 对象</a></h1>
+<h2 id="event-对象"><a class="header" href="#event-对象">Event 对象</a></h2>
+<h2 id="eventpair-对象"><a class="header" href="#eventpair-对象">EventPair 对象</a></h2>
+<h2 id="hal定时器"><a class="header" href="#hal定时器">HAL：定时器</a></h2>
 <blockquote>
 <p>实现 timer_now, timer_set，在此基础上实现 SleepFuture</p>
 </blockquote>
-<h2><a class="header" href="#timer-对象" id="timer-对象">Timer 对象</a></h2>
-<h1><a class="header" href="#用户态同步互斥futex-对象" id="用户态同步互斥futex-对象">用户态同步互斥：Futex 对象</a></h1>
-<h2><a class="header" href="#futex-机制简介" id="futex-机制简介">Futex 机制简介</a></h2>
+<h2 id="timer-对象"><a class="header" href="#timer-对象">Timer 对象</a></h2>
+<h1 id="用户态同步互斥futex-对象"><a class="header" href="#用户态同步互斥futex-对象">用户态同步互斥：Futex 对象</a></h1>
+<h2 id="futex-机制简介"><a class="header" href="#futex-机制简介">Futex 机制简介</a></h2>
 <blockquote>
 <p>Futex 是现代 OS 中用户态同步互斥的唯一底层设施</p>
 <p>为什么快：利用共享内存中的原子变量，避免进入内核</p>
 </blockquote>
-<h2><a class="header" href="#实现基础元语wait-和-wake" id="实现基础元语wait-和-wake">实现基础元语：wait 和 wake</a></h2>
+<h2 id="实现基础元语wait-和-wake"><a class="header" href="#实现基础元语wait-和-wake">实现基础元语：wait 和 wake</a></h2>
 <blockquote>
 <p>实现 wait 和 wake 函数，并做单元测试</p>
 </blockquote>
-<h2><a class="header" href="#实现高级操作" id="实现高级操作">实现高级操作</a></h2>
+<h2 id="实现高级操作"><a class="header" href="#实现高级操作">实现高级操作</a></h2>
 <blockquote>
 <p>实现 Zircon 中定义的复杂 API</p>
 </blockquote>

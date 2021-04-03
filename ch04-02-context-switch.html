@@ -17,12 +17,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
+        
         <link rel="icon" href="favicon.svg">
+        
+        
         <link rel="shortcut icon" href="favicon.png">
+        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
+        
         <link rel="stylesheet" href="css/print.css" media="print">
+        
 
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
@@ -124,9 +130,11 @@
                     <h1 class="menu-title">简明 zCore 教程</h1>
 
                     <div class="right-buttons">
+                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        
                         
                         <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
@@ -159,26 +167,26 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#上下文切换" id="上下文切换">上下文切换</a></h1>
+                        <h1 id="上下文切换"><a class="header" href="#上下文切换">上下文切换</a></h1>
 <blockquote>
 <p>本节介绍 trapframe-rs 中 <a href="https://github.com/rcore-os/trapframe-rs/blob/master/src/arch/x86_64/fncall.rs">fncall.rs</a> 的魔法实现</p>
 </blockquote>
-<h2><a class="header" href="#保存和恢复通用寄存器" id="保存和恢复通用寄存器">保存和恢复通用寄存器</a></h2>
+<h2 id="保存和恢复通用寄存器"><a class="header" href="#保存和恢复通用寄存器">保存和恢复通用寄存器</a></h2>
 <blockquote>
 <p>定义 UserContext 结构体</p>
 <p>保存 callee-saved 寄存器到栈上，恢复 UserContext 寄存器，进入用户态，反之亦然</p>
 </blockquote>
-<h2><a class="header" href="#找回内核上下文线程局部存储-与-fs-寄存器" id="找回内核上下文线程局部存储-与-fs-寄存器">找回内核上下文：线程局部存储 与 FS 寄存器</a></h2>
+<h2 id="找回内核上下文线程局部存储-与-fs-寄存器"><a class="header" href="#找回内核上下文线程局部存储-与-fs-寄存器">找回内核上下文：线程局部存储 与 FS 寄存器</a></h2>
 <blockquote>
 <p>在用户程序跳转回内核代码的那一刻，如何在不破坏用户寄存器的情况下切换回内核栈？</p>
 <p>进入用户态前，将内核栈指针保存在内核 glibc 的 TLS 区域中。为此我们需要查看 glibc 源码，找到一个空闲位置。</p>
 <p>Linux 和 macOS 下如何分别通过系统调用设置 fsbase / gsbase</p>
 </blockquote>
-<h2><a class="header" href="#测试" id="测试">测试</a></h2>
+<h2 id="测试"><a class="header" href="#测试">测试</a></h2>
 <blockquote>
 <p>编写单元测试验证上述过程</p>
 </blockquote>
-<h2><a class="header" href="#macos-的麻烦动态二进制修改" id="macos-的麻烦动态二进制修改">macOS 的麻烦：动态二进制修改</a></h2>
+<h2 id="macos-的麻烦动态二进制修改"><a class="header" href="#macos-的麻烦动态二进制修改">macOS 的麻烦：动态二进制修改</a></h2>
 <blockquote>
 <p>由于 macOS 用户程序无法修改 fs 寄存器，当运行相关指令时会访问非法内存地址触发段错误。</p>
 <p>我们需要实现段错误信号处理函数，并在其中动态修改用户程序指令，将 fs 改为 gs。</p>

@@ -17,12 +17,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
+        
         <link rel="icon" href="favicon.svg">
+        
+        
         <link rel="shortcut icon" href="favicon.png">
+        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
+        
         <link rel="stylesheet" href="css/print.css" media="print">
+        
 
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
@@ -124,9 +130,11 @@
                     <h1 class="menu-title">简明 zCore 教程</h1>
 
                     <div class="right-buttons">
+                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        
                         
                         <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
@@ -159,18 +167,18 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#等待内核对象的信号" id="等待内核对象的信号">等待内核对象的信号</a></h1>
-<h2><a class="header" href="#信号与等待机制简介" id="信号与等待机制简介">信号与等待机制简介</a></h2>
-<h2><a class="header" href="#在内核对象中加入信号" id="在内核对象中加入信号">在内核对象中加入信号</a></h2>
+                        <h1 id="等待内核对象的信号"><a class="header" href="#等待内核对象的信号">等待内核对象的信号</a></h1>
+<h2 id="信号与等待机制简介"><a class="header" href="#信号与等待机制简介">信号与等待机制简介</a></h2>
+<h2 id="在内核对象中加入信号"><a class="header" href="#在内核对象中加入信号">在内核对象中加入信号</a></h2>
 <blockquote>
 <p>定义 Signal 结构体</p>
 <p>在 KObjectBase 中加入 signal 和 callbacks 变量，实现 signal 系列函数，并做单元测试</p>
 </blockquote>
-<h2><a class="header" href="#实现信号等待-future" id="实现信号等待-future">实现信号等待 Future</a></h2>
+<h2 id="实现信号等待-future"><a class="header" href="#实现信号等待-future">实现信号等待 Future</a></h2>
 <blockquote>
 <p>实现 wait_signal 函数，并做单元测试</p>
 </blockquote>
-<h2><a class="header" href="#利用-select-组合子实现多对象等待" id="利用-select-组合子实现多对象等待">利用 select 组合子实现多对象等待</a></h2>
+<h2 id="利用-select-组合子实现多对象等待"><a class="header" href="#利用-select-组合子实现多对象等待">利用 select 组合子实现多对象等待</a></h2>
 <blockquote>
 <p>实现 wait_signal_many 函数，并做单元测试</p>
 </blockquote>

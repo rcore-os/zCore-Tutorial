@@ -17,12 +17,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
+        
         <link rel="icon" href="favicon.svg">
+        
+        
         <link rel="shortcut icon" href="favicon.png">
+        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
+        
         <link rel="stylesheet" href="css/print.css" media="print">
+        
 
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
@@ -124,9 +130,11 @@
                     <h1 class="menu-title">简明 zCore 教程</h1>
 
                     <div class="right-buttons">
+                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        
                         
                         <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
@@ -159,26 +167,26 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#物理内存vmo-对象" id="物理内存vmo-对象">物理内存：VMO 对象</a></h1>
-<h2><a class="header" href="#vmo-简介" id="vmo-简介">VMO 简介</a></h2>
+                        <h1 id="物理内存vmo-对象"><a class="header" href="#物理内存vmo-对象">物理内存：VMO 对象</a></h1>
+<h2 id="vmo-简介"><a class="header" href="#vmo-简介">VMO 简介</a></h2>
 <blockquote>
 <p>根据文档梳理 VMO 的主要特性</p>
 </blockquote>
-<h2><a class="header" href="#实现-vmo-对象框架" id="实现-vmo-对象框架">实现 VMO 对象框架</a></h2>
+<h2 id="实现-vmo-对象框架"><a class="header" href="#实现-vmo-对象框架">实现 VMO 对象框架</a></h2>
 <blockquote>
 <p>实现 VmObject 结构，其中定义 VmObjectTrait 接口，并提供三个具体实现 Paged, Physical, Slice</p>
 </blockquote>
-<h2><a class="header" href="#hal用文件模拟物理内存" id="hal用文件模拟物理内存">HAL：用文件模拟物理内存</a></h2>
+<h2 id="hal用文件模拟物理内存"><a class="header" href="#hal用文件模拟物理内存">HAL：用文件模拟物理内存</a></h2>
 <blockquote>
 <p>初步介绍 mmap，引出用文件模拟物理内存的思想</p>
 <p>创建文件并用 mmap 线性映射到进程地址空间</p>
 <p>实现 pmem_read, pmem_write</p>
 </blockquote>
-<h2><a class="header" href="#实现物理内存-vmo" id="实现物理内存-vmo">实现物理内存 VMO</a></h2>
+<h2 id="实现物理内存-vmo"><a class="header" href="#实现物理内存-vmo">实现物理内存 VMO</a></h2>
 <blockquote>
 <p>用 HAL 实现 VmObjectPhysical 的方法，并做单元测试</p>
 </blockquote>
-<h2><a class="header" href="#实现切片-vmo" id="实现切片-vmo">实现切片 VMO</a></h2>
+<h2 id="实现切片-vmo"><a class="header" href="#实现切片-vmo">实现切片 VMO</a></h2>
 <blockquote>
 <p>实现 VmObjectSlice，并做单元测试</p>
 </blockquote>

@@ -17,12 +17,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
+        
         <link rel="icon" href="favicon.svg">
+        
+        
         <link rel="shortcut icon" href="favicon.png">
+        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
+        
         <link rel="stylesheet" href="css/print.css" media="print">
+        
 
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
@@ -124,9 +130,11 @@
                     <h1 class="menu-title">简明 zCore 教程</h1>
 
                     <div class="right-buttons">
+                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        
                         
                         <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
@@ -159,31 +167,31 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#zircon-用户程序" id="zircon-用户程序">Zircon 用户程序</a></h1>
-<h2><a class="header" href="#用户态启动流程" id="用户态启动流程">用户态启动流程</a></h2>
+                        <h1 id="zircon-用户程序"><a class="header" href="#zircon-用户程序">Zircon 用户程序</a></h1>
+<h2 id="用户态启动流程"><a class="header" href="#用户态启动流程">用户态启动流程</a></h2>
 <blockquote>
 <p>kernel -&gt; userboot -&gt; bootsvc -&gt; component_manager -&gt; sh / device_manager</p>
 <p>ZBI 与 bootfs：ZBI 中包含初始文件系统 bootfs，内核将 ZBI 完整传递给 userboot，由它负责解析并对其它进程提供文件服务</p>
 </blockquote>
-<h2><a class="header" href="#用户程序的组成" id="用户程序的组成">用户程序的组成</a></h2>
+<h2 id="用户程序的组成"><a class="header" href="#用户程序的组成">用户程序的组成</a></h2>
 <blockquote>
 <p>内核不直接参与用户程序的加载工作（第一个进程除外）</p>
 <p>用户程序强制使用 PIC 和 PIE（位置无关代码）</p>
 <p>内存地址空间组成：Program, Stack, vDSO, Dylibs</p>
 <p>通过 Channel 传递启动信息和句柄</p>
 </blockquote>
-<h2><a class="header" href="#加载-elf-文件" id="加载-elf-文件">加载 ELF 文件</a></h2>
+<h2 id="加载-elf-文件"><a class="header" href="#加载-elf-文件">加载 ELF 文件</a></h2>
 <blockquote>
 <p>简单介绍 ELF 文件的组成结构</p>
 <p>实现 VmarExt::load_from_elf 函数</p>
 </blockquote>
-<h2><a class="header" href="#系统调用的跳板vdso" id="系统调用的跳板vdso">系统调用的跳板：vDSO</a></h2>
+<h2 id="系统调用的跳板vdso"><a class="header" href="#系统调用的跳板vdso">系统调用的跳板：vDSO</a></h2>
 <blockquote>
 <p>介绍 vDSO 的作用</p>
 <p>如何修改 vDSO 源码（libzircon）将 syscall 改为函数调用</p>
 <p>加载 vDSO 时修改 vDSO 代码段，填入跳转地址</p>
 </blockquote>
-<h2><a class="header" href="#第一个用户程序userboot" id="第一个用户程序userboot">第一个用户程序：userboot</a></h2>
+<h2 id="第一个用户程序userboot"><a class="header" href="#第一个用户程序userboot">第一个用户程序：userboot</a></h2>
 <blockquote>
 <p>实现 zircon-loader 中的 run_userboot 函数</p>
 <p>能够进入用户态并在第一个系统调用时跳转回来</p>
