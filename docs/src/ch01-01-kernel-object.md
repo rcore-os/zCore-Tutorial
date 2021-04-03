@@ -78,7 +78,7 @@ $ cd zcore
 由于我们会用到一些不稳定（unstable）的语言特性，需要使用 nightly 版本的工具链。在项目根目录下创建一个 `rust-toolchain` 文件，指明使用的工具链版本：
 
 ```sh
-{{#include ../../zcore/rust-toolchain}}
+{{#include ../../code/ch01-01/rust-toolchain}}
 ```
 
 这个程序库目前是在你的 Linux 或 macOS 上运行，但有朝一日它会成为一个真正的 OS 在裸机上运行。
@@ -117,9 +117,9 @@ use alloc::string::String;
 // src/object/mod.rs
 /// 内核对象公共接口
 pub trait KernelObject: Send + Sync {
-{{#include ../../zcore/src/object/mod.rs:object}}
+{{#include ../../code/ch01-01/src/object/mod.rs:object}}
 
-{{#include ../../zcore/src/object/mod.rs:koid}}
+{{#include ../../code/ch01-01/src/object/mod.rs:koid}}
 ```
 
 这里的 [`Send + Sync`] 是一个约束所有 `KernelObject` 都要满足的前提条件，即它必须是一个**并发对象**。
@@ -134,7 +134,7 @@ pub trait KernelObject: Send + Sync {
 
 ```rust,noplaypen
 // src/object/object.rs
-{{#include ../../zcore/src/object/object_v1.rs:dummy_def}}
+{{#include ../../code/ch01-01/src/object/object_v1.rs:dummy_def}}
 ```
 
 这里我们采用一种[**内部可变性**]的设计模式：将对象的所有可变的部分封装到一个内部对象 `DummyObjectInner` 中，并在原对象中用自旋锁 [`Mutex`] 把它包起来，剩下的其它字段都是不可变的。
@@ -151,14 +151,14 @@ pub trait KernelObject: Send + Sync {
 
 ```toml
 [dependencies]
-{{#include ../../zcore/Cargo.toml:spin}}
+{{#include ../../code/ch01-01/Cargo.toml:spin}}
 ```
- 
+
 然后我们为新对象实现构造函数：
 
 ```rust,noplaypen
 // src/object/object.rs
-{{#include ../../zcore/src/object/object_v1.rs:dummy_new}}
+{{#include ../../code/ch01-01/src/object/object_v1.rs:dummy_new}}
 ```
 
 根据文档描述，每个内核对象都有唯一的 ID。为此我们需要实现一个全局的 ID 分配方法。这里采用的方法是用一个静态变量存放下一个待分配 ID 值，每次分配就原子地 +1。
@@ -170,7 +170,7 @@ ID 类型使用 `u64`，保证了数值空间足够大，在有生之年都不�
 
 ```rust,noplaypen
 // src/object/object.rs
-{{#include ../../zcore/src/object/object_v1.rs:dummy_impl}}
+{{#include ../../code/ch01-01/src/object/object_v1.rs:dummy_impl}}
 ```
 
 到此为止，我们已经迈出了万里长征第一步，实现了一个最简单的功能。有实现，就要有测试！即使最简单的代码也要保证它的行为符合我们预期。
@@ -180,7 +180,7 @@ ID 类型使用 `u64`，保证了数值空间足够大，在有生之年都不�
 
 ```rust,noplaypen
 // src/object/object.rs
-{{#include ../../zcore/src/object/object_v1.rs:dummy_test}}
+{{#include ../../code/ch01-01/src/object/object_v1.rs:dummy_test}}
 ```
 
 ```sh
@@ -240,7 +240,7 @@ fn downcast_v2<T: KernelObject>(object: Arc<dyn KernelObject>) -> Arc<T> {
 
 ```toml
 [dependencies]
-{{#include ../../zcore/Cargo.toml:downcast}}
+{{#include ../../code/ch01-01/Cargo.toml:downcast}}
 ```
 
 （题外话：这个库原来是不支持 `no_std` 的，zCore 有这个需求，于是就顺便帮他实现了一把）
@@ -261,7 +261,7 @@ impl_downcast!(sync KernelObject);
 
 ```rust,noplaypen
 // src/object/object.rs
-{{#include ../../zcore/src/object/object_v1.rs:downcast_test}}
+{{#include ../../code/ch01-01/src/object/object_v1.rs:downcast_test}}
 ```
 
 ```sh
@@ -300,14 +300,14 @@ test object::tests::dummy_object ... ok
 
 ```rust,noplaypen
 // src/object/mod.rs
-{{#include ../../zcore/src/object/mod.rs:base_def}}
+{{#include ../../code/ch01-01/src/object/mod.rs:base_def}}
 ```
 
 接下来我们把它的构造函数改为实现 `Default` trait，并且公共属性和方法都指定为 `pub`：
 
 ```rust,noplaypen
 // src/object/mod.rs
-{{#include ../../zcore/src/object/mod.rs:base_default}}
+{{#include ../../code/ch01-01/src/object/mod.rs:base_default}}
 impl KObjectBase {
     /// 生成一个唯一的 ID
     fn new_koid() -> KoID {...}
@@ -322,21 +322,21 @@ impl KObjectBase {
 
 ```rust,noplaypen
 // src/object/mod.rs
-{{#include ../../zcore/src/object/mod.rs:impl_kobject}}
+{{#include ../../code/ch01-01/src/object/mod.rs:impl_kobject}}
 ```
 
 轮子已经造好了！让我们看看如何用它方便地实现一个内核对象，仍以 `DummyObject` 为例：
 
 ```rust,noplaypen
 // src/object/mod.rs
-{{#include ../../zcore/src/object/mod.rs:dummy}}
+{{#include ../../code/ch01-01/src/object/mod.rs:dummy}}
 ```
 
 是不是方便了很多？最后按照惯例，用单元测试检验实现的正确性：
 
 ```rust,noplaypen
 // src/object/mod.rs
-{{#include ../../zcore/src/object/mod.rs:dummy_test}}
+{{#include ../../code/ch01-01/src/object/mod.rs:dummy_test}}
 ```
 
 有兴趣的读者可以继续探索使用功能更强大的 [**过程宏（proc_macro）**]，进一步简化实现新内核对象所需的模板代码。
