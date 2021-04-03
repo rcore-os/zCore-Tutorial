@@ -35,18 +35,54 @@
 {{#include ../../code/ch01-02/src/object/handle.rs:handle}}
 ```
 
-## 实现第一个内核对象
-
-> 使用上一节的方法，实现一个空的 Process 对象
-
 ## 存储内核对象句柄
 
 > 添加成员变量 handles: BTreeMap<HandleValue, Handle>
 >
 > 实现 create，add_handle，remove_handle 函数
 
+使用上一节的方法，实现一个空的 Process 对象：
+
+```rust,noplaypen
+// src/task/process.rs
+{{#include ../../code/ch01-02/src/task/process.rs:process}}
+}
+```
+
+插入、删除句柄函数：
+
+```rust,noplaypen
+// src/task/process.rs
+impl Process {
+{{#include ../../code/ch01-02/src/task/process.rs:add_remove_handle}}
+}
+```
+
+## 定义内核错误及 `Result` 类型
+
+```rust,noplaypen
+// src/error.rs
+{{#include ../../code/ch01-02/src/error.rs:error_begin}}
+
+    // ......
+
+{{#include ../../code/ch01-02/src/error.rs:error_end}}
+```
+
+```rust,noplaypen
+// src/error.rs
+{{#include ../../code/ch01-02/src/error.rs:result}}
+```
+
 ## 根据句柄查找内核对象
 
 > 实现 get_object_with_rights 等其它相关函数
 >
 > 实现 handle 单元测试
+
+```rust,noplaypen
+// src/task/process.rs
+impl Process {
+{{#include ../../code/ch01-02/src/task/process.rs:get_object_with_rights}}
+}
+```
