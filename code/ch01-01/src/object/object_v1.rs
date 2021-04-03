@@ -1,4 +1,5 @@
-use super::*;
+#![allow(dead_code)]
+use super::{KernelObject, KoID, String};
 
 // ANCHOR: dummy_def
 use spin::Mutex;

@@ -1,5 +1,5 @@
 [package]
-name = "zcore"
+name = "ch01-01"
 version = "0.1.0"
 authors = ["Runji Wang <wangrunji0408@163.com>"]
 edition = "2018"
