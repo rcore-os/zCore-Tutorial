@@ -56,3 +56,24 @@
 - AmbientMarkVMOExec：此作业下的某个进程正在尝试使用带有ZX_HANDLE_INVALID的zx_vmo_replace_as_executable（）作为第二个参数，而不是有效的ZX_RSRC_KIND_VMEX。
 
 ## 进程Process
+
+进程是传统意义上程序的一个运行实例，包含一组指令和数据，这些指令将由一个或多个线程执行，并拥有一组资源。在具体实现上，进程包括如下内容：
+
+- Handles ：大部分是进程用到的资源对象的句柄
+- Virtual Memory Address Regions：进程所在的内存地址空间
+- Threads：进程包含的线程组
+
+
+
+进程包含在作业（Job）的管理范畴之中。从资源和权限限制以及生命周期控制的角度来看，允许将由多个进程组成的应用程序视为一个实体（即作业）。
+
+### 生命周期(lifetime)
+进程有自己的生命周期，从开始创建到直到被强制终止或程序退出为止。可通过调用`Process::create()`创建一个进程，并调用`Process::start()`开始执行 。该进程在以下情况下停止执行：
+
+- 最后一个线程终止或退出
+- 进程调用 `Process::exit()`
+- 父作业（parent job）终止了该过程
+- 父作业（parent job）被销毁（destroied）
+
+注：`Process::start()`不能被调用两次。新线程不能被添加到已启动的进程。
+
