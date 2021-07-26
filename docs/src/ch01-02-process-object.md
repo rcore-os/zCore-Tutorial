@@ -5,7 +5,13 @@
 [句柄]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/handles.md
 [权限]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/rights.md
 
-> 介绍并实现 Handle，Rights
+对象可能有多个句柄（在一个或多个进程中）引用它们。
+
+对于几乎所有的对象，当最后一个打开的引用对象的句柄关闭时，对象要么被销毁，要么被置于可能无法撤消的最终状态。
+
+句柄可以从一个进程移动到另一个进程，方法是将它们写入通道（使用[`channel_write()`](https://fuchsia.dev/docs/reference/syscalls/channel_write)），或者使用 [`process_start()`](https://fuchsia.dev/docs/reference/syscalls/process_start)传递一个句柄作为新进程中第一个线程的参数。
+
+可以对句柄或它所引用的对象采取的操作受与该句柄关联的权限管理。引用同一个对象的两个句柄可能具有不同的权限。
 
 在 `Cargo.toml` 中加入 `bitflags` 库：
 
