@@ -18,3 +18,8 @@ cargo install mdbook
 mdbook serve docs
 ```
 
+## code
+`code`目录下的`rust-toolchain`内容为`nightly-2021-07-27`。原则上，我们会采用`rustc`最新的版本。目前的版本信息如下：
+```
+rustc 1.56.0-nightly (08095fc1f 2021-07-26)
+```
