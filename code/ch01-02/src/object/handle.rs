@@ -1,5 +1,5 @@
 // ANCHOR: handle
-use super::{KernelObject, Rights, DummyObject};
+use super::{DummyObject, KernelObject, Rights};
 use alloc::sync::Arc;
 
 /// 内核对象句柄
