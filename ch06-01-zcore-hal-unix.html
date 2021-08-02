@@ -1,0 +1,359 @@
+<!DOCTYPE HTML>
+<html lang="cn" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>✅ UNIX硬件抽象层 - 简明 zCore 教程</title>
+                
+
+        <!-- Custom HTML head -->
+        
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+                <link rel="icon" href="favicon.svg">
+                        <link rel="shortcut icon" href="favicon.png">
+                <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+                <link rel="stylesheet" href="css/print.css" media="print">
+        
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+                <link rel="stylesheet" href="fonts/fonts.css">
+        
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+            </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">简明 zCore 教程</a></li><li class="chapter-item expanded affix "><a href="zcore-intro.html">🚧 zCore 整体结构和设计模式</a></li><li class="chapter-item expanded affix "><a href="fuchsia.html">🚧 Fuchsia OS 和 Zircon 微内核</a></li><li class="chapter-item expanded "><a href="ch01-00-object.html"><strong aria-hidden="true">1.</strong> 内核对象</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch01-01-kernel-object.html"><strong aria-hidden="true">1.1.</strong> ✅ 初识内核对象</a></li><li class="chapter-item expanded "><a href="ch01-02-process-object.html"><strong aria-hidden="true">1.2.</strong> 🚧 对象管理器：Process 对象</a></li><li class="chapter-item expanded "><a href="ch01-03-channel-object.html"><strong aria-hidden="true">1.3.</strong> 🚧 对象传送器：Channel 对象</a></li></ol></li><li class="chapter-item expanded "><a href="ch02-00-task.html"><strong aria-hidden="true">2.</strong> 任务管理</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch02-01-zircon-task.html"><strong aria-hidden="true">2.1.</strong> 🚧 Zircon 任务管理体系</a></li><li class="chapter-item expanded "><a href="ch02-02-process-job-object.html"><strong aria-hidden="true">2.2.</strong> 🚧 进程管理：Process 与 Job 对象</a></li><li class="chapter-item expanded "><a href="ch02-03-thread-object.html"><strong aria-hidden="true">2.3.</strong> 🚧 线程管理：Thread 对象</a></li></ol></li><li class="chapter-item expanded "><a href="ch03-00-memory.html"><strong aria-hidden="true">3.</strong> 内存管理</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch03-01-zircon-memory.html"><strong aria-hidden="true">3.1.</strong> 🚧 Zircon 内存管理模型</a></li><li class="chapter-item expanded "><a href="ch03-02-vmo.html"><strong aria-hidden="true">3.2.</strong> 🚧 物理内存：VMO 对象</a></li><li class="chapter-item expanded "><a href="ch03-03-vmo-paged.html"><strong aria-hidden="true">3.3.</strong> 🚧 物理内存：按页分配的 VMO</a></li><li class="chapter-item expanded "><a href="ch03-04-vmar.html"><strong aria-hidden="true">3.4.</strong> 🚧 虚拟内存：VMAR 对象</a></li></ol></li><li class="chapter-item expanded "><a href="ch04-00-userspace.html"><strong aria-hidden="true">4.</strong> 用户程序</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch04-01-user-program.html"><strong aria-hidden="true">4.1.</strong> 🚧 Zircon 用户程序</a></li><li class="chapter-item expanded "><a href="ch04-02-context-switch.html"><strong aria-hidden="true">4.2.</strong> 🚧 上下文切换</a></li><li class="chapter-item expanded "><a href="ch04-03-syscall.html"><strong aria-hidden="true">4.3.</strong> 🚧 系统调用</a></li></ol></li><li class="chapter-item expanded "><a href="ch05-00-signal-and-waiting.html"><strong aria-hidden="true">5.</strong> 信号和等待</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch05-01-wait-signal.html"><strong aria-hidden="true">5.1.</strong> 🚧 等待内核对象的信号</a></li><li class="chapter-item expanded "><a href="ch05-02-port-object.html"><strong aria-hidden="true">5.2.</strong> 🚧 同时等待多个信号：Port 对象</a></li><li class="chapter-item expanded "><a href="ch05-03-more-signal-objects.html"><strong aria-hidden="true">5.3.</strong> 🚧 实现更多：EventPair, Timer 对象</a></li><li class="chapter-item expanded "><a href="ch05-04-futex-object.html"><strong aria-hidden="true">5.4.</strong> 🚧 用户态同步互斥：Futex 对象</a></li></ol></li><li class="chapter-item expanded "><a href="ch06-00-hal.html"><strong aria-hidden="true">6.</strong> 硬件抽象层</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ch06-01-zcore-hal-unix.html" class="active"><strong aria-hidden="true">6.1.</strong> ✅ UNIX硬件抽象层</a></li></ol></li></ol>            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                                                <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                                            </div>
+
+                    <h1 class="menu-title">简明 zCore 教程</h1>
+
+                    <div class="right-buttons">
+                                                <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                                                                        <a href="https://github.com/rcore-os/zCore-Tutorial" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                                                
+                    </div>
+                </div>
+
+                                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="zcore-的用户态运行支持"><a class="header" href="#zcore-的用户态运行支持">zCore 的用户态运行支持</a></h1>
+<p>libos 版 zCore（简称uzCore） 的开发与裸机版 zCore （简称bzCore）同步进行,两个版本的 zCore 共用除了HAL 层之外的所有代码。为了支持 uzCore  的正常运行,zCore 在地址空间划分方面对 Zircon /Linux的原有设计进行了一定的修改,并为此对 Fuchsia 的源码进行了简单的修改、重新编译;另外,uzCore 需要的硬件相关层(HAL)将完全由宿主 OS 提供支持,一个合理的 HAL 层接口划分也是为支持 uzCore做出的重要考虑。</p>
+<h2 id="hal-层接口设计"><a class="header" href="#hal-层接口设计">HAL 层接口设计</a></h2>
+<p>HAL 层的设计是在bzCore 和 uzCore 的开发过程中逐渐演进形成的，在开发过程中将硬件实现相关的接口,比如页表、物理内存分配等进行封装,暴露给上层的内核对象层使用。在 kernel­-hal 模块中,给出空的弱链接实现,由 bzCore 或 uzCore 的开发者对相应的接口进行相应的实现,并用设定函数链接名称的方式,替换掉预设的弱链接的空函数。在整个开发过程中,不断对 HAL 层提出需求并实现,目前形成了第一版 HAL 层接口,在设计上能够满足现有的内核对象实现所需要的功能。</p>
+<p>对内核对象层而言,所依赖的硬件环境不再是真实硬件环境中能够看到的物理内存、CPU、MMU 等,而是 HAL 暴露给上层的一整套接口。这一点从设计上来说,是 zCore 与 Zircon 存在差异的一点。Zircon 将 x86_64 、ARM64 的硬件架构进行底层封装,但是没有给出一套统一的硬件 API 供上层的内核对象直接使用,在部分内核对象的实现中,仍然需要通过宏等手段对代码进行条件编译,从而支持同时面向两套硬件架构进行开发。而在 zCore 的内核对象层实现中,可以完全不考虑底层硬件接口的实现,使一套内核对象的模块代码可以同时在 bzCore和 uzCore 上运行,之后如果 zCore 进一步支持 RISC-V 64 架构（已初步实现）,只需要新增一套 HAL的实现,无需修改上层代码。下面将列出目前的uzCore的HAL层，即kernel-hal-unix的接口。</p>
+<h3 id="hal接口名称----功能描述"><a class="header" href="#hal接口名称----功能描述"><strong>HAL接口名称    功能描述</strong></a></h3>
+<ul>
+<li>线程相关
+<ul>
+<li>hal_thread_spawn  Thread::spawn创建一个新线程并加入调度</li>
+<li>hal_thread_set_tid Thread::set_tid  设定当前线程的 id</li>
+<li>hal_thread_get_tid Thread::get_tid  获取当前线程的 id</li>
+</ul>
+</li>
+<li>future
+<ul>
+<li>yield_now暂时让出 CPU，回到async runtime中</li>
+<li>sleep_until 休眠直到定时到达</li>
+<li>YieldFuture 放弃执行的future</li>
+<li>SleepFuture 睡眠且等待被唤醒的future</li>
+<li>SerialFuture 通过serial_read获得字符的future</li>
+</ul>
+</li>
+<li>上下文切换相关
+<ul>
+<li>VectorRegs  x86相关</li>
+<li>hal_context_run context_run 进入“用户态”运行</li>
+</ul>
+</li>
+<li>用户指针相关
+<ul>
+<li>UserPtr  对用户指针的操作：读/写/解引用/访问数组/访问字符串</li>
+<li>IoVec 非连续buffer集合（Vec结构）：读/写</li>
+</ul>
+</li>
+<li>页表相关
+<ul>
+<li>hal_pt_currentPageTable::current  获取当前页表</li>
+<li>hal_pt_newPageTable::new  新建一个页表</li>
+<li>hal_pt_map PageTable::map  将一个物理页帧映射到一个虚拟地址中</li>
+<li>hal_pt_unmap PageTable::unmap  解映射某个虚拟地址</li>
+<li>hal_pt_protect PageTable::protect 修改vaddr对应的页表项的flags</li>
+<li>hal_pt_query PageTable::query  查询某个虚拟地址对应的页表项状态</li>
+<li>hal_pt_table_phys PageTable::table_phys  获取对应页表的根目录表物理地址</li>
+<li>hal_pt_activate PageTable::activate 激活当前页表</li>
+<li>PageTable::map_many  同时映射多个物理页帧到连续虚拟内存空间</li>
+<li>PageTable::map_cont  同时映射连续的多个物理页帧到虚拟内存空间</li>
+<li>hal_pt_unmap_cont PageTable::unmap_cont  解映射某个虚拟地址开始的一片范围</li>
+<li>MMUFlags  页表项的属性位</li>
+</ul>
+</li>
+<li>物理页帧相关
+<ul>
+<li>hal_frame_alloc PhysFrame::alloc  分配一个物理页帧</li>
+<li>hal_frame_alloc_contiguous  PhysFrame::alloc_contiguous_base  分配一块连续的物理内存</li>
+<li>PhysFrame::addr  返回物理页帧对应的物理地址</li>
+<li>PhysFrame::alloc_contiguous  分配一块连续的物理内存</li>
+<li>PhysFrame::zero_frame_addr  返回零页的物理地址（一个特殊页，内容永远为全0）</li>
+<li>PhysFrame::drop  Drop trait 回收该物理页帧</li>
+<li>hal_pmem_read pmem_read  读取某特定物理页帧的内容到缓冲区</li>
+<li>hal_pmem_write pmem_write  将缓冲区中的内容写入某特定物理页帧</li>
+<li>hal_frame_copy frame_copy  复制物理页帧的内容</li>
+<li>hal_frame_zero  frame_zero_in_range  物理页帧清零</li>
+<li>hal_frame_flush  frame_flush将物理页帧的数据从 Cache 刷回内存</li>
+</ul>
+</li>
+<li>基本I/O外设
+<ul>
+<li>hal_serial_read  serial_read  字符串输入</li>
+<li>hal_serial_write  serial_write  字符串输出</li>
+<li>hal_timer_now  timer_now 获取当前时间</li>
+<li>hal_timer_set  timer_set 设置一个时钟，当到达deadline时，会调用 callback 函数</li>
+<li>hal_timer_set_next  timer_set_next  设置下一个时钟</li>
+<li>hal_timer_tick  timer_tick当时钟中断产生时会调用的时钟函数，触发所有已到时间的 callback</li>
+</ul>
+</li>
+<li>中断处理
+<ul>
+<li>hal_irq_handle  handle 中断处理例程</li>
+<li>hal_ioapic_set_handle set_ioapic_handle x86相关，对高级中断控制器设置处理例程</li>
+<li>hal_irq_add_handle  add_handle 对某中断添加中断处理例程</li>
+<li>hal_ioapic_reset_handle reset_ioapic_handle 重置级中断控制器并设置处理例程</li>
+<li>hal_irq_remove_handle  remove_handle 移除某中断的中断处理例程</li>
+<li>hal_irq_allocate_block  allocate_block 给某中断分配连续区域</li>
+<li>hal_irq_free_block  free_block 给某中断释放连续区域</li>
+<li>hal_irq_overwrite_handler  overwrite_handler 覆盖某中断的中断处理例程</li>
+<li>hal_irq_enable  enable  使能某中断</li>
+<li>hal_irq_disable disable  屏蔽某中断</li>
+<li>hal_irq_maxinstr maxinstr  x86相关，获得IOAPIC的maxinstr???</li>
+<li>hal_irq_configure  configure  对某中断进行配置???</li>
+<li>hal_irq_isvalid  is_valid 查询某中断是否有效</li>
+</ul>
+</li>
+<li>硬件平台相关
+<ul>
+<li>hal_vdso_constants  vdso_constants  得到平台相关常量参数
+<ul>
+<li>struct VdsoConstants  平台相关常量：</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>max_num_cpus features dcache_line_size ticks_per_second  ticks_to_mono_numerator ticks_to_mono_denominator physmem version_string_len  version_string</p>
+<pre><code>* fetch_fault_vaddr  fetch_fault_vaddr 取得出错的地址 ???好像缺了hal_*
+* fetch_trap_num fetch_trap_num 取得中断号
+* hal_pc_firmware_tables  pc_firmware_tables  x86相关，取得`acpi_rsdp` 和 `smbios` 的物理地址
+* hal_acpi_table get_acpi_table 得到acpi table
+* hal_outpd  outpd  x86相关，对IO Port进行写访问
+* hal_inpd  inpd  x86相关，对IO Port进行读访问
+* hal_apic_local_id  apic_local_id 得到本地(local) APIC  ID
+* fill_random 产生随机数，并写入到buffer中
+</code></pre>
+<p>在上述“线程相关”的列表中，列出了 HAL 层的部分接口设计,覆盖线程调度方面。在线程调度方面,Thread 结构体相关的接口主要用于将一个线程加入调度等基本操作。在 zCore 的相关实现中,线程调度的各接口使用 naive­-executor 给出的接口以及 trapframe­ 给出的接口来进行实现,二者都是我们为裸机环境的协程调度与上下文切换所封装的 Rust 库。uzCore 中,线程调度的相关接口依赖于 Rust 的用户态协程支持以及 uzCore 开发者实现的用户态上下文切换。</p>
+<p>在内存管理方面,HAL 层将内存管理分为页表操作与物理页帧管理两方面,并以此设计接口。在 zCore 实现中,物理页帧的分配与回收由于需要设计物理页帧分配器,且可分配范围大小与内核刚启动时的内存探测密切相关,我们将其直接在总控模块 zCore 中进行实现。而在 uzCore 中,页表对应操作依赖 mmap 进行模拟,物理页帧的相关操作则直接使用用户态物理内存分配器进行模拟。</p>
+<p>在 Zircon 的设计中,内存的初始状态应该设置为全 0,为了在内核对象层满足该要求,我们为 HAL 层设计了零页接口,要求 HAL 层保留一个内容为全 0 的物理页帧,供上层使用。上层负责保证该零页内容不被修改。</p>
+<h2 id="修改-vdso"><a class="header" href="#修改-vdso">修改 VDSO</a></h2>
+<p>VDSO 是由内核提供、并只读映射到用户态的动态链接库，以函数接口形式提供系统调用接口。原始的 VDSO 中将会最终使用 syscall 指令从用户态进入内核态。但在 uzCore 环境下,内核和用户程序都运行在用户态,因此需要将 syscall 指令修改为函数调用,也就是将 sysall 指令修改为 call 指令。为此我们修改了 VDSO 汇编代码，将其中的 syscall 替换为 call，提供给 uzCore 使用。在 uzCore 内核初始化环节中，向其中填入 call 指令要跳转的目标地址,重定向到内核中处理 syscall 的特定函数,从而实现模拟系统调用的效果。</p>
+<h2 id="调整地址空间范围"><a class="header" href="#调整地址空间范围">调整地址空间范围</a></h2>
+<p>在 uzCore 中,使用 mmap 来模拟页表,所有进程共用一个 64 位地址空间。因此,从地址空间范围这一角度来说,运行在 uzCore 上的用户程序所在的用户进程地址空间无法像 Zircon 要求的一样大。对于这一点,我们在为每一个用户进程设置地址空间时,手动进行分配,规定每一个用户进程地址空间的大小为 0x100_0000_0000,从 0x2_0000_0000 开始依次排布。0x0 开始至 0x2_0000_0000 规定为 uzCore 内核所在地址空间,不用于 mmap。图 3.3给出了 uzCore 在运行时若干个用户进程的地址空间分布。</p>
+<p>与 uzCore 兼容,zCore 对于用户进程的地址空间划分也遵循同样的设计,但在裸机环境下,一定程度上摆脱了限制,能够将不同用户地址空间分隔在不同的页表中。如图 3.4所示,zCore 中将三个用户进程的地址空间在不同的页表中映射,但是为了兼容 uzCore 的运行,每一个用户进程地址空间中用户程序能够真正访问到的部分都仅有 0x100_0000_0000 大小。</p>
+<h2 id="libos源代码分析记录"><a class="header" href="#libos源代码分析记录">LibOS源代码分析记录</a></h2>
+<h3 id="zcore-on-riscv64的libos支持"><a class="header" href="#zcore-on-riscv64的libos支持">zCore on riscv64的LibOS支持</a></h3>
+<ul>
+<li>LibOS unix模式的入口在linux-loader main.rs:main()</li>
+</ul>
+<p>初始化包括kernel_hal_unix，Host文件系统，其中载入elf应用程序的过程与zcore bare模式一样；</p>
+<p>重点工作应该在kernel_hal_unix中的<strong>内核态与用户态互相切换</strong>的处理。</p>
+<p>kernel_hal_unix初始化主要包括了，构建Segmentation Fault时SIGSEGV信号的处理函数，当代码尝试使用fs寄存器时会触发信号；</p>
+<ul>
+<li>为什么要注册这个信号处理函数呢？</li>
+</ul>
+<p>根据wrj的说明：由于 macOS 用户程序无法修改 fs 寄存器，当运行相关指令时会访问非法内存地址触发Segmentation Fault。故实现段错误信号处理函数，并在其中动态修改用户程序指令，将 fs 改为 gs</p>
+<p>kernel_hal_unix还构造了<strong>进入用户态</strong>所需的run_fncall() -&gt; syscall_fn_return()；</p>
+<p>而用户程序需要调用syscall_fn_entry()来<strong>返回内核态</strong>；</p>
+<p>Linux-x86_64平台运行时，用户态和内核态之间的切换运用了 fs base 寄存器；</p>
+<ul>
+<li>Linux 和 macOS 下如何分别通过系统调用设置 fsbase / gsbase 。</li>
+</ul>
+<p>这个转换过程调用到了trapframe库，x86_64和aarch64有对应实现，而riscv则需要自己手动实现；</p>
+<ul>
+<li>关于fs寄存器</li>
+</ul>
+<p>查找了下，fs寄存器一般会用于寻址TLS，每个线程有它自己的fs base地址；</p>
+<p>fs寄存器被glibc定义为存放tls信息，结构体tcbhead_t就是用来描述tls；</p>
+<p>进入用户态前，将内核栈指针保存在内核 glibc 的 TLS 区域中。</p>
+<p>可参考一个运行时程序的代码转换工具：<a href="https://github.com/DynamoRIO/dynamorio/issues/1568#issuecomment-239819506?fileGuid=VMAPV7ERl7HbpNqg">https://github.com/DynamoRIO/dynamorio/issues/1568#issuecomment-239819506</a></p>
+<ul>
+<li><strong>LibOS内核态与用户态的切换</strong></li>
+</ul>
+<p>Linux x86_64中，fs寄存器是用户态程序无法设置的，只能通过系统调用进行设置；</p>
+<p>例如clone系统调用，通过arch_prctl来设置fs寄存器；指向的struct pthread，glibc中，其中的首个结构是tcbhead_t</p>
+<p>计算tls结构体偏移：</p>
+<p>经过试验，x86_64平台，int型：4节，指针类型：8节，无符号长整型：8节；</p>
+<p>riscv64平台，int型： 4节，指针类型：8节，无符号长整型：8节；</p>
+<p>计算tls偏移量时，注意下，在musl中，aarch64和riscv64架构有#define TLS_ABOVE_TP，而x86_64无此定义</p>
+<ul>
+<li>关于Linux user mode (UML)</li>
+</ul>
+<p>&quot;No, UML works only on x86 and x86_64.&quot;</p>
+<p><a href="https://sourceforge.net/p/user-mode-linux/mailman/message/32782012/?fileGuid=VMAPV7ERl7HbpNqg">https://sourceforge.net/p/user-mode-linux/mailman/message/32782012/</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                                                    <a rel="prev" href="ch06-00-hal.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+                        
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                                    <a rel="prev" href="ch06-00-hal.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+                            </nav>
+
+        </div>
+
+        
+        
+        
+                <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+                <script src="ace.js" type="text/javascript" charset="utf-8"></script>
+        <script src="editor.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mode-rust.js" type="text/javascript" charset="utf-8"></script>
+        <script src="theme-dawn.js" type="text/javascript" charset="utf-8"></script>
+        <script src="theme-tomorrow_night.js" type="text/javascript" charset="utf-8"></script>
+        
+                <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+        
+    </body>
+</html>
