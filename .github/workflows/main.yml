@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - dev
 
 jobs:
   check:
@@ -16,14 +17,14 @@ jobs:
           toolchain: nightly-2021-07-27
           override: true
           components: rustfmt, clippy
-      - name: into-code-dir
-        run: cd code    
       - name: Check code format
+        run: cd code
         uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
       - name: Clippy
+        run: cd code      
         uses: actions-rs/cargo@v1
         with:
           command: clippy
