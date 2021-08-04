@@ -145,8 +145,38 @@ impl Process {
         Ok(object)
     }
 
-    pub fn start(&self) -> () {
-        // unimplemented!()
+    pub fn start(
+        &self,
+        thread: &Arc<Thread>,
+        entry: usize,
+        stack: usize,
+        arg1: Option<Handle>,
+        arg2: usize,
+        thread_fn: ThreadFn,
+    ) -> ZxResult {
+        let handle_value;
+        {
+            let mut inner = self.inner.lock();
+            if !inner.contains_thread(thread) {
+                return Err(ZxError::ACCESS_DENIED);
+            }
+            if inner.status != Status::Init {
+                return Err(ZxError::BAD_STATE);
+            }
+            inner.status = Status::Running;
+            handle_value = arg1.map_or(INVALID_HANDLE, |handle| inner.add_handle(handle));
+        }
+        thread.set_first_thread();
+        match thread.start(entry, stack, handle_value as usize, arg2, thread_fn) {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                let mut inner = self.inner.lock();
+                if handle_value != INVALID_HANDLE {
+                    inner.remove_handle(handle_value).ok();
+                }
+                Err(err)
+            }
+        }
     }
 
     /// Exit current process with `retcode`.
@@ -158,13 +188,22 @@ impl Process {
             return;
         }
         inner.status = Status::Exited(retcode);
+        if inner.threads.is_empty() {
+            inner.handles.clear();
+            drop(inner);
+            self.terminate();
+            return;
+        }
+        for thread in inner.threads.iter() {
+            thread.kill();
+        }
         inner.handles.clear();
     }
 
     /// The process finally terminates.
     fn terminate(&self) {
         let mut inner = self.inner.lock();
-        let retcode = match inner.status {
+        let _retcode = match inner.status {
             Status::Exited(retcode) => retcode,
             _ => {
                 inner.status = Status::Exited(0);
@@ -269,17 +308,17 @@ impl Task for Process {
     }
 
     fn suspend(&self) {
-        // let inner = self.inner.lock();
-        // for thread in inner.threads.iter() {
-        //     thread.suspend();
-        // }
+        let inner = self.inner.lock();
+        for thread in inner.threads.iter() {
+            thread.suspend();
+        }
     }
 
     fn resume(&self) {
-        // let inner = self.inner.lock();
-        // for thread in inner.threads.iter() {
-        //     thread.resume();
-        // }
+        let inner = self.inner.lock();
+        for thread in inner.threads.iter() {
+            thread.resume();
+        }
     }
 }
 
@@ -447,6 +486,7 @@ mod tests {
     fn exit() {
         let root_job = Job::root();
         let proc = Process::create(&root_job, "proc").expect("failed to create process");
+        let thread = Thread::create(&proc, "thread").expect("failed to create thread");
 
         let info = proc.get_info();
         assert!(!info.has_exited && !info.started && info.return_code == 0);
@@ -454,6 +494,8 @@ mod tests {
         proc.exit(666);
         let info = proc.get_info();
         assert!(info.has_exited && info.started && info.return_code == 666);
+        assert_eq!(thread.state(), ThreadState::Dying);
+        // TODO: when is the thread dead?
 
         assert_eq!(
             Thread::create(&proc, "thread1").err(),

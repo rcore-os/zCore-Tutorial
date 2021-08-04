@@ -1,0 +1,13 @@
+[package]
+name = "kernel-hal-unix"
+version = "0.1.0"
+authors = ["Runji Wang <wangrunji0408@163.com>"]
+edition = "2018"
+description = "Kernel HAL implementation on Linux and macOS."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+kernel-hal = { path = "../kernel-hal" }
+async-std = "1.9"
+trapframe = "0.8.0"
