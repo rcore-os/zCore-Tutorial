@@ -1,6 +1,8 @@
 use {
     super::job_policy::*,
     super::process::Process,
+    super::*,
+    crate::error::*,
     crate::object::*,
     crate::task::Task,
     alloc::sync::{Arc, Weak},
@@ -122,17 +124,6 @@ impl Job {
         Ok(())
     }
 
-    /// Sets timer slack policy to an empty job.
-    pub fn set_policy_timer_slack(&self, policy: TimerSlackPolicy) -> ZxResult {
-        let mut inner = self.inner.lock();
-        if !inner.is_empty() {
-            return Err(ZxError::BAD_STATE);
-        }
-        check_timer_policy(&policy)?;
-        inner.timer_policy = inner.timer_policy.generate_new(policy);
-        Ok(())
-    }
-
     /// Add a process to the job.
     pub(super) fn add_process(&self, process: Arc<Process>) -> ZxResult {
         let mut inner = self.inner.lock();
@@ -241,7 +232,7 @@ impl Drop for Job {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::task::{CurrentThread, Status, Thread, ThreadState, TASK_RETCODE_SYSCALL_KILL};
+    use crate::task::TASK_RETCODE_SYSCALL_KILL;
 
     #[test]
     fn create() {
@@ -387,35 +378,23 @@ mod tests {
         let job = Job::create_child(&root_job).expect("failed to create job");
         let proc = Process::create(&root_job, "proc").expect("failed to create process");
         let thread = Thread::create(&proc, "thread").expect("failed to create thread");
-        let current_thread = CurrentThread(thread.clone());
 
         root_job.kill();
         assert!(root_job.inner.lock().killed);
         assert!(job.inner.lock().killed);
         assert_eq!(proc.status(), Status::Exited(TASK_RETCODE_SYSCALL_KILL));
-        assert_eq!(thread.state(), ThreadState::Dying);
-        // killed but not terminated, since `CurrentThread` not dropped.
-        assert!(!root_job.signal().contains(Signal::JOB_TERMINATED));
-        assert!(job.signal().contains(Signal::JOB_TERMINATED)); // but the lonely job is terminated
-        assert!(!proc.signal().contains(Signal::PROCESS_TERMINATED));
-        assert!(!thread.signal().contains(Signal::THREAD_TERMINATED));
+        // assert_eq!(thread.state(), ThreadState::Dying);
 
-        std::mem::drop(current_thread);
+        std::mem::drop(thread);
         assert!(root_job.inner.lock().killed);
         assert!(job.inner.lock().killed);
         assert_eq!(proc.status(), Status::Exited(TASK_RETCODE_SYSCALL_KILL));
-        assert_eq!(thread.state(), ThreadState::Dead);
-        // all terminated now
-        assert!(root_job.signal().contains(Signal::JOB_TERMINATED));
-        assert!(job.signal().contains(Signal::JOB_TERMINATED));
-        assert!(proc.signal().contains(Signal::PROCESS_TERMINATED));
-        assert!(thread.signal().contains(Signal::THREAD_TERMINATED));
+        // assert_eq!(thread.state(), ThreadState::Dead);
 
         // The job has no children.
         let root_job = Job::root();
         root_job.kill();
         assert!(root_job.inner.lock().killed);
-        assert!(root_job.signal().contains(Signal::JOB_TERMINATED));
 
         // The job's process have no threads.
         let root_job = Job::root();
@@ -425,31 +404,5 @@ mod tests {
         assert!(root_job.inner.lock().killed);
         assert!(job.inner.lock().killed);
         assert_eq!(proc.status(), Status::Exited(TASK_RETCODE_SYSCALL_KILL));
-        assert!(root_job.signal().contains(Signal::JOB_TERMINATED));
-        assert!(job.signal().contains(Signal::JOB_TERMINATED));
-        assert!(proc.signal().contains(Signal::PROCESS_TERMINATED));
-    }
-
-    #[test]
-    fn critical_process() {
-        let root_job = Job::root();
-        let job = root_job.create_child().unwrap();
-        let job1 = root_job.create_child().unwrap();
-
-        let proc = Process::create(&job, "proc").expect("failed to create process");
-
-        assert_eq!(
-            proc.set_critical_at_job(&job1, true).err(),
-            Some(ZxError::INVALID_ARGS)
-        );
-        proc.set_critical_at_job(&root_job, true).unwrap();
-        assert_eq!(
-            proc.set_critical_at_job(&job, true).err(),
-            Some(ZxError::ALREADY_BOUND)
-        );
-
-        proc.exit(666);
-        assert!(root_job.inner.lock().killed);
-        assert!(root_job.signal().contains(Signal::JOB_TERMINATED));
     }
 }

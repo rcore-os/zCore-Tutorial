@@ -1,4 +1,3 @@
-use crate::error::*;
 use alloc::string::String;
 use alloc::sync::Arc;
 use core::fmt::Debug;
@@ -6,13 +5,12 @@ use core::sync::atomic::*;
 use downcast_rs::{impl_downcast, DowncastSync};
 use spin::Mutex;
 
-// ANCHOR: mod
 mod handle;
 mod rights;
 
 pub use self::handle::*;
 pub use self::rights::*;
-// ANCHOR_END: mod
+pub use super::*;
 
 /// 内核对象公共接口
 pub trait KernelObject: DowncastSync + Debug {
@@ -79,6 +77,11 @@ impl Default for KObjectBase {
 }
 
 impl KObjectBase {
+    /// Create a new kernel object base.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// 生成一个唯一的 ID
     fn new_koid() -> KoID {
         static NEXT_KOID: AtomicU64 = AtomicU64::new(1024);
@@ -91,6 +94,16 @@ impl KObjectBase {
     /// 设置对象名称
     pub fn set_name(&self, name: &str) {
         self.inner.lock().name = String::from(name);
+    }
+
+    /// Create a kernel object base with `name`.
+    pub fn with_name(name: &str) -> Self {
+        KObjectBase {
+            id: Self::new_koid(),
+            inner: Mutex::new(KObjectBaseInner {
+                name: String::from(name),
+            }),
+        }
     }
 }
 

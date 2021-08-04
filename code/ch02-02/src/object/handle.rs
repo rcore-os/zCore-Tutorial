@@ -2,6 +2,8 @@
 use super::{KernelObject, Rights};
 use alloc::sync::Arc;
 
+pub type HandleValue = u32;
+
 /// 内核对象句柄
 #[derive(Clone)]
 pub struct Handle {

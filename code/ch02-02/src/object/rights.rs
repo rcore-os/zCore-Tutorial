@@ -29,7 +29,29 @@ bitflags! {
         const BASIC = Self::TRANSFER.bits | Self::DUPLICATE.bits | Self::WAIT.bits | Self::INSPECT.bits;
         const IO = Self::READ.bits | Self::WRITE.bits;
 
+        /// GET_PROPERTY ｜ SET_PROPERTY
+        const PROPERTY = Self::GET_PROPERTY.bits | Self::SET_PROPERTY.bits;
+
+        /// GET_POLICY ｜ SET_POLICY
+        const POLICY = Self::GET_POLICY.bits | Self::SET_POLICY.bits;
+
+        /// BASIC & !Self::DUPLICATE | IO | SIGNAL | SIGNAL_PEER
         const DEFAULT_CHANNEL = Self::BASIC.bits & !Self::DUPLICATE.bits | Self::IO.bits | Self::SIGNAL.bits | Self::SIGNAL_PEER.bits;
+
+        /// BASIC | IO | PROPERTY | ENUMERATE | DESTROY | SIGNAL | MANAGE_PROCESS | MANAGE_THREAD
+        const DEFAULT_PROCESS = Self::BASIC.bits | Self::IO.bits | Self::PROPERTY.bits | Self::ENUMERATE.bits | Self::DESTROY.bits
+            | Self::SIGNAL.bits | Self::MANAGE_PROCESS.bits | Self::MANAGE_THREAD.bits;
+
+        /// BASIC | IO | PROPERTY | DESTROY | SIGNAL | MANAGE_THREAD
+        const DEFAULT_THREAD = Self::BASIC.bits | Self::IO.bits | Self::PROPERTY.bits | Self::DESTROY.bits | Self::SIGNAL.bits | Self::MANAGE_THREAD.bits;
+
+        /// BASIC | WAIT
+        const DEFAULT_VMAR = Self::BASIC.bits & !Self::WAIT.bits;
+
+        /// BASIC | IO | PROPERTY | POLICY | ENUMERATE | DESTROY | SIGNAL | MANAGE_JOB | MANAGE_PROCESS | MANAGE_THREAD
+        const DEFAULT_JOB = Self::BASIC.bits | Self::IO.bits | Self::PROPERTY.bits | Self::POLICY.bits | Self::ENUMERATE.bits
+            | Self::DESTROY.bits | Self::SIGNAL.bits | Self::MANAGE_JOB.bits | Self::MANAGE_PROCESS.bits | Self::MANAGE_THREAD.bits;
+
     }
 }
 // ANCHOR_END: rights

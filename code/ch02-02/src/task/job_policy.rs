@@ -1,5 +1,3 @@
-use crate::error::*;
-
 /// Security and resource policies of a job.
 #[derive(Default, Copy, Clone)]
 pub struct JobPolicy {
@@ -107,46 +105,4 @@ pub enum PolicyAction {
     DenyException = 3,
     /// Terminate the process.
     Kill = 4,
-}
-
-/// Timer slack policy.
-///
-/// See [timer slack](../../signal/timer/enum.Slack.html) for more information.
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct TimerSlackPolicy {
-    min_slack: i64,
-    default_mode: Slack,
-}
-
-/// Check whether the policy is valid.
-pub fn check_timer_policy(policy: &TimerSlackPolicy) -> ZxResult {
-    if policy.min_slack.is_negative() {
-        return Err(ZxError::INVALID_ARGS);
-    }
-    Ok(())
-}
-
-#[repr(C)]
-pub(super) struct TimerSlack {
-    amount: i64,
-    mode: Slack,
-}
-
-impl TimerSlack {
-    pub(super) fn generate_new(&self, policy: TimerSlackPolicy) -> TimerSlack {
-        TimerSlack {
-            amount: self.amount.max(policy.min_slack),
-            mode: policy.default_mode,
-        }
-    }
-}
-
-impl Default for TimerSlack {
-    fn default() -> Self {
-        TimerSlack {
-            amount: 0,
-            mode: Slack::Center,
-        }
-    }
 }

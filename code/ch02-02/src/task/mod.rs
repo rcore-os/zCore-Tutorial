@@ -3,6 +3,9 @@ use super::*;
 mod job;
 mod job_policy;
 mod process;
+mod thread;
+
+pub use {self::job::*, self::job_policy::*, self::process::*, self::thread::*};
 
 /// Task (Thread, Process, or Job)
 pub trait Task: Sync + Send {
@@ -15,12 +18,6 @@ pub trait Task: Sync + Send {
 
     /// Resume the task
     fn resume(&self);
-
-    /// Get the exceptionate.
-    fn exceptionate(&self) -> Arc<Exceptionate>;
-
-    /// Get the debug exceptionate.
-    fn debug_exceptionate(&self) -> Arc<Exceptionate>;
 }
 
 /// The return code set when a task is killed via zx_task_kill().
