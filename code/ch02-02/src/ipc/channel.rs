@@ -5,11 +5,11 @@ use {
     alloc::collections::VecDeque,
     alloc::sync::{Arc, Weak},
     alloc::vec::Vec,
+    core::convert::TryInto,
     core::sync::atomic::{AtomicU32, Ordering},
     spin::Mutex,
 };
 
-// ANCHOR: Channel
 pub struct Channel {
     base: KObjectBase,
     peer: Weak<Channel>,
@@ -29,10 +29,8 @@ impl_kobject!(Channel
         self.peer.upgrade().map(|p| p.id()).unwrap_or(0)
     }
 );
-// ANCHOR: Channel
 
 impl Channel {
-    // ANCHOR: Create
     /// Create a channel and return a pair of its endpoints
     #[allow(unsafe_code)]
     pub fn create() -> (Arc<Self>, Arc<Self>) {
@@ -54,9 +52,7 @@ impl Channel {
         }
         (channel0, channel1)
     }
-    // ANCHOR_END: Create
 
-    // ANCHOR: Read_Write
     /// Read a packet from the channel if check is ok, otherwise the msg will keep.
     pub fn read(&self) -> ZxResult<T> {
         let mut recv_queue = self.recv_queue.lock();
@@ -83,9 +79,8 @@ impl Channel {
         let mut send_queue = self.recv_queue.lock();
         send_queue.push_back(msg);
     }
-    // ANCHOR_END: Read_Write
 
-    /// Generate a new transaction ID.
+    /// Generate a new transaction ID for `call`.
     fn new_txid(&self) -> TxID {
         self.next_txid.fetch_add(1, Ordering::SeqCst)
     }
@@ -96,7 +91,6 @@ impl Channel {
     }
 }
 
-// ANCHOR: MP
 /// The message transferred in the channel.
 /// See [Channel](struct.Channel.html) for details.
 #[derive(Default)]
@@ -108,11 +102,13 @@ pub struct MessagePacket {
     /// See [Channel](struct.Channel.html) for details.
     pub handles: Vec<Handle>,
 }
-// ANCHOR_END: MP
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::boxed::Box;
+    use core::sync::atomic::*;
+    use core::time::Duration;
 
     #[test]
     fn test_basics() {

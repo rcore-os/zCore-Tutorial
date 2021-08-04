@@ -6,13 +6,14 @@ use core::sync::atomic::*;
 use downcast_rs::{impl_downcast, DowncastSync};
 use spin::Mutex;
 
+// ANCHOR: mod
 mod handle;
 mod rights;
 
 pub use self::handle::*;
 pub use self::rights::*;
+// ANCHOR_END: mod
 
-// ANCHOR: trait
 /// 内核对象公共接口
 pub trait KernelObject: DowncastSync + Debug {
     /// 获取对象 ID
@@ -31,12 +32,23 @@ pub trait KernelObject: DowncastSync + Debug {
     }
     /// 尝试获取关联对象 id，否则返回 0
     ///
-    /// 当前该对象必须是 `Channel`
+    /// 当前该对象必须是 `Channel` 或者 `Task`
+    ///
+    /// 如果该对象是 `Channel`, 将获取伙伴的 id
+    ///
+    /// 如果该对象是 `Task`, 将获取其父 `Task` 的 id
     fn related_koid(&self) -> KoID {
         0
     }
+    /// 尝试获取对应 id 的子对象
+    ///
+    /// 当前该对象必须是 `Job` 或者 `Process`.
+    ///
+    /// 如果该对象是 `Job`，则其直属子 `Job` 以及 `Process` 必须被获取。
+    fn get_child(&self, _id: KoID) -> ZxResult<Arc<dyn KernelObject>> {
+        Err(ZxError::WRONG_TYPE)
+    }
 }
-// ANCHOR_END: trait
 
 impl_downcast!(sync KernelObject);
 

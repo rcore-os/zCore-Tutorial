@@ -1,5 +1,4 @@
 #![no_std]
-#![deny(unused_imports)]
 #![feature(get_mut_unchecked)]
 
 extern crate alloc;
