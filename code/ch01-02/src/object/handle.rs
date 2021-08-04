@@ -1,5 +1,5 @@
 // ANCHOR: handle
-use super::{KernelObject, Rights};
+use super::{DummyObject, KernelObject, Rights};
 use alloc::sync::Arc;
 
 /// 内核对象句柄
@@ -16,3 +16,14 @@ impl Handle {
     }
 }
 // ANCHOR_END: handle
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_obj_handle() {
+        let obj = DummyObject::new();
+        let handle1 = Handle::new(obj.clone(), Rights::BASIC);
+    }
+}

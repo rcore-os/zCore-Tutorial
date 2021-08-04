@@ -75,3 +75,45 @@ impl Process {
     }
     // ANCHOR_END: get_object_with_rights
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloc::format;
+
+    #[test]
+    fn new_proc() {
+        let proc = Process::new();
+        assert_eq!(proc.type_name(), "Process");
+        assert_eq!(proc.name(), "");
+        proc.set_name("proc1");
+        assert_eq!(proc.name(), "proc1");
+        assert_eq!(
+            format!("{:?}", proc),
+            format!("Process({}, \"proc1\")", proc.id())
+        );
+
+        let obj: Arc<dyn KernelObject> = proc;
+        assert_eq!(obj.type_name(), "Process");
+        assert_eq!(obj.name(), "proc1");
+        obj.set_name("proc2");
+        assert_eq!(obj.name(), "proc2");
+        assert_eq!(
+            format!("{:?}", obj),
+            format!("Process({}, \"proc2\")", obj.id())
+        );
+    }
+
+    fn proc_handle() {
+        let proc = Process::new();
+        let handle = Handle::new(proc.clone(), Rights::DEFAULT_PROCESS);
+        let handle_value = proc.add_handle(handle);
+
+        let object1: Arc<Process> = proc
+            .get_object_with_rights(handle_value, Rights::DEFAULT_PROCESS)
+            .expect("failed to get object");
+        assert!(Arc::ptr_eq(&object1, &proc));
+
+        proc.remove_handle(handle_value);
+    }
+}

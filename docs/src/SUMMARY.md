@@ -30,3 +30,6 @@
     - [🚧 同时等待多个信号：Port 对象](ch05-02-port-object.md)
     - [🚧 实现更多：EventPair, Timer 对象](ch05-03-more-signal-objects.md)
     - [🚧 用户态同步互斥：Futex 对象](ch05-04-futex-object.md)
+
+- [硬件抽象层](ch06-00-hal.md)
+    - [✅ UNIX硬件抽象层](ch06-01-zcore-hal-unix.md)
