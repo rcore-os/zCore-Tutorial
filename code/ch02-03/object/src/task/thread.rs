@@ -10,8 +10,8 @@ use {
         pin::Pin,
         task::{Context, Poll, Waker},
     },
-    trapframe::{UserContext},
     spin::Mutex,
+    trapframe::UserContext,
 };
 
 pub use self::thread_state::*;
@@ -258,7 +258,6 @@ impl Task for Thread {
     }
 }
 
-
 /// A handle to current thread.
 ///
 /// This is a wrapper of [`Thread`] that provides additional methods for the thread runner.
@@ -397,9 +396,9 @@ pub struct ThreadInfo {
 mod tests {
     use super::job::Job;
     use super::*;
+    use core::time::Duration;
     use kernel_hal::timer_now;
     use kernel_hal::GeneralRegs;
-    use core::time::Duration;
 
     #[test]
     fn create() {
@@ -468,7 +467,6 @@ mod tests {
         assert_eq!(Arc::strong_count(&thread), 1);
         assert_eq!(thread.state(), ThreadState::Dead);
     }
-
 
     #[test]
     fn info() {
