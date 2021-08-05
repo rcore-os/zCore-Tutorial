@@ -21,7 +21,6 @@ impl Handle {
 mod tests {
     use super::*;
     use crate::object::DummyObject;
-    
     #[test]
     fn new_obj_handle() {
         let obj = DummyObject::new();
