@@ -1,7 +1,7 @@
 # zCore Tutorial
 
 [![CI](https://github.com/rcore-os/zCore-Tutorial/workflows/CI/badge.svg?branch=master)](https://github.com/rcore-os/zCore-Tutorial/actions)
-
+[![Docs](https://img.shields.io/badge/docs-alpha-blue)](https://rcore-os.github.io/zCore-Tutorial/)
 
 ## 仓库目录
 
