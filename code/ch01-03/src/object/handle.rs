@@ -20,6 +20,7 @@ impl Handle {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::object::DummyObject;
 
     #[test]
     fn new_obj_handle() {
