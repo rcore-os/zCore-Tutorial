@@ -81,3 +81,25 @@ jobs:
           cargo test
           cd ch02-03
           cargo test
+
+  doc:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]      
+#        os: [ubuntu-20.04, macos-latest]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2021-07-27
+          components: rust-src
+      - name: Build docs
+        run: |
+          cd code
+          cargo doc --no-deps --all-features
+          cd ch02-03
+          cargo doc --no-deps --all-features
