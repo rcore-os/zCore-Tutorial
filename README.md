@@ -1,5 +1,8 @@
 # zCore Tutorial
 
+[![CI](https://github.com/rcore-os/zCore-Tutorial/workflows/CI/badge.svg?branch=master)](https://github.com/rcore-os/zCore-Tutorial/actions)
+
+
 ## 仓库目录
 
 * `docs/`: 教学实验指导
