@@ -26,3 +26,18 @@ mdbook serve docs
 ```
 rustc 1.56.0-nightly (08095fc1f 2021-07-26)
 ```
+
+## 参考
+- https://fuchsia.dev/
+  - https://fuchsia.dev/fuchsia-src/concepts/kernel
+  - https://fuchsia.dev/fuchsia-src/reference/kernel_objects/objects
+  - https://fuchsia.dev/fuchsia-src/reference/syscalls
+  - https://github.com/zhangpf/fuchsia-docs-zh-CN/tree/master/zircon
+  - [许中兴博士演讲：Fuchsia OS 简介](https://xuzhongxing.github.io/201806fuchsia.pdf)
+    
+- 毕设论文
+  - [Rust语言操作系统的设计与实现,王润基本科毕设论文,2019](https://github.com/rcore-os/zCore/wiki/files/wrj-thesis.pdf) 
+  - [zCore操作系统内核的设计与实现,潘庆霖本科毕设论文,2020](https://github.com/rcore-os/zCore/wiki/files/pql-thesis.pdf)
+  
+- 开发文档
+  - https://github.com/rcore-os/zCore/wiki/documents-of-zcore  
