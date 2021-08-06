@@ -3,10 +3,14 @@
 [![CI](https://github.com/rcore-os/zCore-Tutorial/workflows/CI/badge.svg?branch=master)](https://github.com/rcore-os/zCore-Tutorial/actions)
 [![Docs](https://img.shields.io/badge/docs-alpha-blue)](https://rcore-os.github.io/zCore-Tutorial/)
 
+zCore Toturial 的目标是通过`step by step`地建立一个简化的zCore kernel的过程来学习和掌握zCore Kernel的核心概念和对应实现，从而为进一步分析掌握zCore的完整内核打下基础。
+
+zCore Toturial 的特点是所有的code都在用户态运行，便于调试和分析。
+
 ## 仓库目录
 
 * `docs/`: 教学实验指导
-* `zcore`: 操作系统代码
+* `code`: 操作系统代码
 
 ## 实验指导
 
