@@ -44,4 +44,6 @@ rustc 1.56.0-nightly (08095fc1f 2021-07-26)
   - [zCore操作系统内核的设计与实现,潘庆霖本科毕设论文,2020](https://github.com/rcore-os/zCore/wiki/files/pql-thesis.pdf)
   
 - 开发文档
-  - https://github.com/rcore-os/zCore/wiki/documents-of-zcore  
+  - https://github.com/rcore-os/zCore/wiki/documents-of-zcore
+
+- 更简单和基础的[rCore-Tutorial v3](https://rcore-os.github.io/rCore-Tutorial-Book-v3/)：如果看不懂上面的内容，可以先看看这个教程。
