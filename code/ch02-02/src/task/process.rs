@@ -145,7 +145,7 @@ impl Process {
         Ok(object)
     }
 
-    pub fn start(&self) -> () {
+    pub fn start(&self) {
         // unimplemented!()
     }
 
@@ -164,7 +164,7 @@ impl Process {
     /// The process finally terminates.
     fn terminate(&self) {
         let mut inner = self.inner.lock();
-        let retcode = match inner.status {
+        let _retcode = match inner.status {
             Status::Exited(retcode) => retcode,
             _ => {
                 inner.status = Status::Exited(0);

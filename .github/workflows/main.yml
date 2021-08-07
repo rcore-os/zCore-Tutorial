@@ -21,6 +21,8 @@ jobs:
         run: |
           cd code
           cargo fmt --all -- --check
+          cd ch02-03
+          cargo fmt --all -- --check
 #        uses: actions-rs/cargo@v1
 #        with:
 #          command: fmt
@@ -29,6 +31,8 @@ jobs:
         run: |
           cd code
           cargo clippy
+          cd ch02-03
+          cargo clippy
 #        uses: actions-rs/cargo@v1
 #        with:
 #          command: clippy
@@ -36,7 +40,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-latest]
+        os: [ubuntu-20.04]      
+#        os: [ubuntu-20.04, macos-latest]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -50,15 +55,17 @@ jobs:
         run: |
           cd code
           cargo build
+          cd ch02-03
+          cargo build
 #        uses: actions-rs/cargo@v1
 #        with:
 #          command: build  
-
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-latest]
+        os: [ubuntu-20.04]      
+#        os: [ubuntu-20.04, macos-latest]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -72,3 +79,27 @@ jobs:
         run: |
           cd code
           cargo test
+          cd ch02-03
+          cargo test
+
+  doc:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]      
+#        os: [ubuntu-20.04, macos-latest]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2021-07-27
+          components: rust-src
+      - name: Build docs
+        run: |
+          cd code
+          cargo doc --no-deps --all-features
+          cd ch02-03
+          cargo doc --no-deps --all-features

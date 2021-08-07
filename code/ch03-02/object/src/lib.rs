@@ -17,7 +17,7 @@ mod error;
 mod ipc;
 mod object;
 mod task;
-mod vm;
 mod util;
+mod vm;
 
 pub use self::error::*;

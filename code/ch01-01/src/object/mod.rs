@@ -127,6 +127,7 @@ impl_kobject!(DummyObject);
 
 impl DummyObject {
     /// 创建一个新 `DummyObject`
+    #[allow(dead_code)]
     pub fn new() -> Arc<Self> {
         Arc::new(DummyObject {
             base: KObjectBase::default(),

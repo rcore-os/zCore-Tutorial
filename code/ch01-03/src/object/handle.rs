@@ -1,5 +1,5 @@
 // ANCHOR: handle
-use super::{DummyObject, KernelObject, Rights};
+use super::{KernelObject, Rights};
 use alloc::sync::Arc;
 
 /// 内核对象句柄
@@ -20,7 +20,7 @@ impl Handle {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use crate::object::DummyObject;
     #[test]
     fn new_obj_handle() {
         let obj = DummyObject::new();
