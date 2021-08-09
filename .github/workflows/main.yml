@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - dev
 
 jobs:
   check:
@@ -33,6 +32,8 @@ jobs:
           cargo clippy
           cd ch02-03
           cargo clippy
+          cd ../ch03-02
+          cargo clippy
 #        uses: actions-rs/cargo@v1
 #        with:
 #          command: clippy
@@ -57,6 +58,8 @@ jobs:
           cargo build
           cd ch02-03
           cargo build
+          cd ../ch03-02
+          cargo build          
 #        uses: actions-rs/cargo@v1
 #        with:
 #          command: build  
@@ -81,6 +84,8 @@ jobs:
           cargo test
           cd ch02-03
           cargo test
+          cd ../ch03-02
+          cargo test          
 
   doc:
     runs-on: ${{ matrix.os }}
@@ -103,3 +108,5 @@ jobs:
           cargo doc --no-deps --all-features
           cd ch02-03
           cargo doc --no-deps --all-features
+          cd ../ch03-02
+          cargo doc --no-deps --all-features          
