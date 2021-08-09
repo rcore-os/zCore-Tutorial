@@ -545,6 +545,7 @@ impl_kobject!(DummyObject);
 
 impl DummyObject {
     /// 创建一个新 `DummyObject`
+    #[allow(dead_code)]
     pub fn new() -&gt; Arc&lt;Self&gt; {
         Arc::new(DummyObject {
             base: KObjectBase::default(),
@@ -651,7 +652,7 @@ bitflags! {
 </code></pre>
 <p>定义句柄：</p>
 <pre><code class="language-rust noplaypen">// src/object/handle.rs
-use super::{DummyObject, KernelObject, Rights};
+use super::{KernelObject, Rights};
 use alloc::sync::Arc;
 
 /// 内核对象句柄
