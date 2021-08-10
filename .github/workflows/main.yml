@@ -34,6 +34,8 @@ jobs:
           cargo clippy
           cd ../ch03-02
           cargo clippy
+          cd ../ch03-04
+          cargo clippy          
 #        uses: actions-rs/cargo@v1
 #        with:
 #          command: clippy
@@ -60,6 +62,8 @@ jobs:
           cargo build
           cd ../ch03-02
           cargo build          
+          cd ../ch03-04
+          cargo build               
 #        uses: actions-rs/cargo@v1
 #        with:
 #          command: build  
@@ -86,7 +90,8 @@ jobs:
           cargo test
           cd ../ch03-02
           cargo test          
-
+          cd ../ch03-04
+          cargo test                
   doc:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -110,3 +115,5 @@ jobs:
           cargo doc --no-deps --all-features
           cd ../ch03-02
           cargo doc --no-deps --all-features          
+          cd ../ch03-04
+          cargo doc --no-deps --all-features           
