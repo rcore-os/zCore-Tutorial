@@ -277,8 +277,7 @@ impl VmAddressRegion {
         let length = inner.mappings.iter().fold(0, |acc, map| {
             acc + end_addr
                 .min(map.end_addr())
-                .checked_sub(addr.max(map.addr()))
-                .unwrap_or(0)
+                .saturating_sub(addr.max(map.addr()))
         });
         if length != len {
             return Err(ZxError::NOT_FOUND);

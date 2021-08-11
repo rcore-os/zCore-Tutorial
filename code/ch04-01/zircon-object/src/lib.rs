@@ -13,12 +13,12 @@ extern crate std;
 #[macro_use]
 extern crate log;
 
+pub mod dev;
 pub mod error;
 pub mod ipc;
 pub mod object;
 pub mod task;
 pub mod util;
 pub mod vm;
-pub mod dev;
 
 pub use self::error::*;

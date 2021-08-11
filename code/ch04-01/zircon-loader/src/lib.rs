@@ -10,16 +10,9 @@ extern crate log;
 use {
     alloc::{boxed::Box, sync::Arc, vec::Vec},
     core::{future::Future, pin::Pin},
-    xmas_elf::ElfFile,
-    zircon_object::{
-        dev::*,
-        ipc::*, 
-        object::*, 
-        task::*, 
-        util::elf_loader::*, 
-        vm::*,
-    },
     kernel_hal::MMUFlags,
+    xmas_elf::ElfFile,
+    zircon_object::{dev::*, ipc::*, object::*, task::*, util::elf_loader::*, vm::*},
 };
 
 mod kcounter;
