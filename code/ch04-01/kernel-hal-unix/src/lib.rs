@@ -133,9 +133,13 @@ fn mmap(fd: libc::c_int, offset: usize, len: usize, vaddr: VirtAddr, prot: libc:
         let flags = libc::MAP_SHARED | libc::MAP_FIXED;
         libc::mmap(vaddr as _, len, prot, flags, fd, offset as _)
     } as usize;
-    println!(
+    trace!(
         "mmap file: fd={}, offset={:#x}, len={:#x}, vaddr={:#x}, prot={:#b}",
-        fd, offset, len, vaddr, prot,
+        fd,
+        offset,
+        len,
+        vaddr,
+        prot,
     );
     assert_eq!(ret, vaddr, "failed to mmap: {:?}", Error::last_os_error());
 }
