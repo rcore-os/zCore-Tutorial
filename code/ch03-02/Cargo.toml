@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "object",
+    "kernel-hal-unix",
+    "kernel-hal",
+]

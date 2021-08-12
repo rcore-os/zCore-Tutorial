@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  check:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2021-07-27
+          override: true
+          components: rustfmt, clippy
+      - name: Check code format
+        run: |
+          cd code
+          cargo fmt --all -- --check
+          cd ch02-03
+          cargo fmt --all -- --check
+#        uses: actions-rs/cargo@v1
+#        with:
+#          command: fmt
+#          args: --all -- --check
+      - name: Clippy
+        run: |
+          cd code
+          cargo clippy
+          cd ch02-03
+          cargo clippy
+          cd ../ch03-02
+          cargo clippy
+          cd ../ch03-04
+          cargo clippy          
+#        uses: actions-rs/cargo@v1
+#        with:
+#          command: clippy
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]      
+#        os: [ubuntu-20.04, macos-latest]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2021-07-27
+          components: rust-src
+      - name: Build
+        run: |
+          cd code
+          cargo build
+          cd ch02-03
+          cargo build
+          cd ../ch03-02
+          cargo build          
+          cd ../ch03-04
+          cargo build               
+#        uses: actions-rs/cargo@v1
+#        with:
+#          command: build  
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]      
+#        os: [ubuntu-20.04, macos-latest]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2021-07-27
+          components: rust-src
+      - name: Test
+        run: |
+          cd code
+          cargo test
+          cd ch02-03
+          cargo test
+          cd ../ch03-02
+          cargo test          
+          cd ../ch03-04
+          cargo test                
+  doc:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]      
+#        os: [ubuntu-20.04, macos-latest]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2021-07-27
+          components: rust-src
+      - name: Build docs
+        run: |
+          cd code
+          cargo doc --no-deps --all-features
+          cd ch02-03
+          cargo doc --no-deps --all-features
+          cd ../ch03-02
+          cargo doc --no-deps --all-features          
+          cd ../ch03-04
+          cargo doc --no-deps --all-features           
