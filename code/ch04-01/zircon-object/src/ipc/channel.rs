@@ -156,12 +156,10 @@ mod tests {
 
         // read message should success
         let recv_msg = channel1.read().unwrap();
-        assert_eq!(recv_msg.txid, txid0);
         assert_eq!(recv_msg.data.as_slice(), b"hello 1");
         assert!(recv_msg.handles.is_empty());
 
         let recv_msg = channel0.read().unwrap();
-        assert_eq!(recv_msg.txid, txid1);
         assert_eq!(recv_msg.data.as_slice(), b"hello 0");
         assert!(recv_msg.handles.is_empty());
 
