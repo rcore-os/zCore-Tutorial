@@ -22,6 +22,14 @@ jobs:
           cargo fmt --all -- --check
           cd ch02-03
           cargo fmt --all -- --check
+          cd ../ch03-02
+          cargo fmt --all -- --check         
+          cd ../ch03-04
+          cargo fmt --all -- --check
+          cd ../ch04-01
+          cargo fmt --all -- --check
+          cd ../ch04-03
+          cargo fmt --all -- --check
 #        uses: actions-rs/cargo@v1
 #        with:
 #          command: fmt
@@ -35,7 +43,11 @@ jobs:
           cd ../ch03-02
           cargo clippy
           cd ../ch03-04
-          cargo clippy          
+          cargo clippy     
+          cd ../ch04-01
+          cargo clippy
+          cd ../ch04-03
+          cargo clippy               
 #        uses: actions-rs/cargo@v1
 #        with:
 #          command: clippy
@@ -63,7 +75,11 @@ jobs:
           cd ../ch03-02
           cargo build          
           cd ../ch03-04
-          cargo build               
+          cargo build        
+          cd ../ch04-01
+          cargo build
+          cd ../ch04-03
+          cargo build                 
 #        uses: actions-rs/cargo@v1
 #        with:
 #          command: build  
@@ -91,7 +107,11 @@ jobs:
           cd ../ch03-02
           cargo test          
           cd ../ch03-04
-          cargo test                
+          cargo test
+          cd ../ch04-01
+          cargo test
+          cd ../ch04-03
+          cargo test
   doc:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -116,4 +136,8 @@ jobs:
           cd ../ch03-02
           cargo doc --no-deps --all-features          
           cd ../ch03-04
-          cargo doc --no-deps --all-features           
+          cargo doc --no-deps --all-features 
+          cd ../ch04-01
+          cargo doc --no-deps --all-features 
+          cd ../ch04-03
+          cargo doc --no-deps --all-features                    
