@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "zircon-loader",
+    "zircon-object",
+    "kernel-hal-unix",
+    "kernel-hal",
+]

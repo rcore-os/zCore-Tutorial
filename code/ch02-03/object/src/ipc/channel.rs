@@ -55,7 +55,7 @@ impl Channel {
     /// Read a packet from the channel if check is ok, otherwise the msg will keep.
     pub fn read(&self) -> ZxResult<T> {
         let mut recv_queue = self.recv_queue.lock();
-        if let Some(_) = recv_queue.front() {
+        if recv_queue.front().is_some() {
             let msg = recv_queue.pop_front().unwrap();
             return Ok(msg);
         }
