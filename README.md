@@ -58,6 +58,12 @@ rustc 1.56.0-nightly (08095fc1f 2021-07-26)
 3. 在大致掌握本项目后，通过进一步理解和改进zCore，对zCore等新型操作系统有很好的感悟，提升自身实践能力
 
    
+####  code/ch04-xx的相关提示
+  - 推荐运行方式: 在 `ch04-0x` 目录下： `RUST_LOG=info cargo run -p zircon-loader -- /prebuilt/zircon/x64`
+  - ch4 会执行 zircon prebuilt 中的 userboot 程序，详见[userboot源码](https://github.com/vsrinivas/fuchsia/tree/master/zircon/kernel/lib/userabi/userboot)，[fuchsia启动流程](https://fuchsia.dev/fuchsia-src/concepts/booting/userboot?hl=en)。
+  - `ch04-01` 并未实现任何 syscall。因此进入 userboot 后会在第一次 syscall 返回到内核态时 panic 退出。 
+  - `ch04-03` 实现了与 `channel` 和 `debuglog` 有关的部分 syscall，会执行 3 次 syscall 之后由于不支持 process_exit 而退出。
+
 
 ## 参考
 
