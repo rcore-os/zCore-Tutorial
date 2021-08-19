@@ -4,8 +4,6 @@
 
 通道（Channel）是由一定数量的字节数据和一定数量的句柄组成的双向消息传输。
 
-## 对象传输器——Channel
-
 ## 用于IPC的内核对象
 
 Zircon中用于IPC的内核对象主要有Channel、Socket和FIFO。这里我们主要介绍一下前两个。
