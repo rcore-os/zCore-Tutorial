@@ -12,7 +12,7 @@
 
 在 object 模块下定义一个子模块：
 
-```rust
+```rust,noplaypen
 // src/object/mod.rs
 mod handle;
 
@@ -21,7 +21,7 @@ pub use self::handle::*;
 
 定义句柄：
 
-```rust
+```rust,noplaypen
 // src/object/handle.rs
 use super::{KernelObject, Rights};
 use alloc::sync::Arc;
@@ -52,17 +52,17 @@ Arc<T>是一个可以在多线程上使用的引用计数类型，这个计数�
 
 在 object 模块下定义一个子模块：
 
-````
+```rust,noplaypen
 // src/object/mod.rs
 mod rights;
 
 pub use self::rights::*;
-````
+```
 
 权限就是u32的一个数字
 
 
-```
+```rust,noplaypen
 // src/object/rights.rs
 use bitflags::bitflags;
 
@@ -81,7 +81,7 @@ bitflags! {
 
 [**bitflags**](https://docs.rs/bitflags/1.2.1/bitflags/) 是一个 Rust 中常用来比特标志位的 crate 。它提供了 一个 `bitflags!` 宏，如上面的代码段所展示的那样，借助 `bitflags!` 宏我们将一个 `u32` 的 rights 包装为一个 `Rights` 结构体。注意，在使用之前我们需要引入该 crate 的依赖：
 
-```
+```rust,noplaypen
 # Cargo.toml
 
 [dependencies]
@@ -92,7 +92,7 @@ bitflags = "1.2"
 
 首先是最简单的部分，创建一个handle，很显然我们需要提供两个参数，分别是句柄关联的内核对象和句柄的权限。
 
-```
+```rust,noplaypen
 impl Handle {
     /// 创建一个新句柄
     pub fn new(object: Arc<dyn KernelObject>, rights: Rights) -> Self {
@@ -105,7 +105,7 @@ impl Handle {
 
 好啦，让我们来测试一下！
 
-```
+```rust,noplaypen
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -127,7 +127,7 @@ mod tests {
 
 ### 实现空的process对象
 
-```
+```rust,noplaypen
 // src/task/process.rs
 /// 进程对象
 pub struct Process {
@@ -150,7 +150,7 @@ handles使用BTreeMap存储的key是HandleValue，value就是句柄。通过Hand
 
 接下来我们实现创建一个Process的方法：
 
-```
+```rust,noplaypen
 impl Process {
     /// 创建一个新的进程对象
     pub fn new() -> Arc<Self> {
@@ -168,7 +168,7 @@ impl Process {
 
 我们已经实现了创建一个Process的方法，下面我们写一个单元测试：
 
-```
+```rust,noplaypen
 #[test]
     fn new_proc() {
         let proc = Process::new();
@@ -199,7 +199,7 @@ impl Process {
 
 在Process中添加一个新的handle，返回值是一个handleValue，也就是u32：
 
-```
+```rust,noplaypen
 pub fn add_handle(&self, handle: Handle) -> HandleValue {
 
     let mut inner = self.inner.lock();
@@ -216,7 +216,7 @@ pub fn add_handle(&self, handle: Handle) -> HandleValue {
 
 删除Process中的一个句柄：
 
-```
+```rust,noplaypen
 pub fn remove_handle(&self, handle_value: HandleValue) {
 	self.inner.lock().handles.remove(&handle_value);
 }
@@ -224,7 +224,7 @@ pub fn remove_handle(&self, handle_value: HandleValue) {
 
 #### 根据句柄查找内核对象
 
-```
+```rust,noplaypen
 // src/task/process.rs
 impl Process {
     /// 根据句柄值查找内核对象，并检查权限
@@ -261,7 +261,7 @@ ZxResult是表示Zircon状态的i32值，值空间划分如下：
 - 负值：由系统定义（也就是这个文件）
 - 正值：被保留，用于协议特定的错误值，永远不会被系统定义。
 
-```
+```rust,noplaypen
 pub type ZxResult<T> = Result<T, ZxError>;
 
 #[allow(non_camel_case_types, dead_code)]
@@ -290,7 +290,7 @@ ZxResult<T>相当于Result<T, ZxError>，也就相当于我们自己定义了一
 
 目前为止，我们已经实现了Process最基础的方法，下面我们来运行一个单元测试：
 
-```
+```rust,noplaypen
 fn proc_handle() {
         let proc = Process::new();
         let handle = Handle::new(proc.clone(), Rights::DEFAULT_PROCESS);

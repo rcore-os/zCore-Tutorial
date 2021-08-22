@@ -23,7 +23,7 @@ Channel是唯一一个能传递handle的IPC，其他只能传递消息。通道�
 
 消息通常含有`data`和`handles`两部分，我们这里将消息封装为`MessagePacket`结构体，结构体中含有上述两个字段：
 
-```
+```rust,noplaypen
 #[derive(Default)]
 pub struct MessagePacket {
     /// message packet携带的数据data
@@ -37,7 +37,7 @@ pub struct MessagePacket {
 
 在`src`目录下创建一个`ipc`目录，在`ipc`模块下定义一个子模块`channel`：
 
-```
+```rust,noplaypen
 // src/ipc/mod.rs
 use super::*;
 
@@ -47,7 +47,7 @@ pub use self::channel::*;
 
 在`ipc.rs`中引入`crate`：
 
-```
+```rust,noplaypen
 // src/ipc/channel.rs
 
 use {
@@ -64,7 +64,7 @@ use {
 
 下面我们添加Channel结构体：
 
-```
+```rust,noplaypen
 // src/ipc/channel.rs
 pub struct Channel {
     base: KObjectBase,
@@ -81,7 +81,7 @@ type T = MessagePacket;
 
 用使用宏自动实现 `KernelObject` trait ，使用channel类型名，并添加两个函数。
 
-```
+```rust,noplaypen
 impl_kobject!(Channel
     fn peer(&self) -> ZxResult<Arc<dyn KernelObject>> {
         let peer = self.peer.upgrade().ok_or(ZxError::PEER_CLOSED)?;
@@ -97,7 +97,7 @@ impl_kobject!(Channel
 
 下面我们来实现创建一个`Channel`的方法：
 
-```
+```rust,noplaypen
 impl Channel {
 
     #[allow(unsafe_code)]
@@ -126,7 +126,7 @@ impl Channel {
 
 下面我们来分析一下这个`unsafe`代码块：
 
-```
+```rust,noplaypen
 unsafe {
             Arc::get_mut_unchecked(&mut channel0).peer = Arc::downgrade(&channel1);
         }
@@ -138,7 +138,7 @@ unsafe {
 
 下面我们写一个单元测试，来验证我们写的`create`方法：
 
-```
+```rust,noplaypen
 #[test]
     fn test_basics() {
         let (end0, end1) = Channel::create();
@@ -166,7 +166,7 @@ Channel中的数据传输，可以理解为`MessagePacket`在两个端点之间�
 
 获取当前端点的`recv_queue`，从队头中读取一条消息，如果能读取到消息，返回`Ok`，否则返回错误信息。
 
-```
+```rust,noplaypen
 pub fn read(&self) -> ZxResult<T> {
         let mut recv_queue = self.recv_queue.lock();
         if let Some(_msg) = recv_queue.front() {
@@ -185,7 +185,7 @@ pub fn read(&self) -> ZxResult<T> {
 
 先获取当前端点对应的另一个端点的`Weak`指针，通过`upgrade`接口升级为`Arc`指针，从而获取到对应的结构体对象。在它的`recv_queue`队尾push一个`MessagePacket`。
 
-```
+```rust,noplaypen
 pub fn write(&self, msg: T) -> ZxResult {
         let peer = self.peer.upgrade().ok_or(ZxError::PEER_CLOSED)?;
         peer.push_general(msg);
@@ -201,7 +201,7 @@ fn push_general(&self, msg: T) {
 
 下面我们写一个单元测试，验证我们上面写的`read`和`write`两个方法：
 
-```
+```rust,noplaypen
 #[test]
     fn read_write() {
         let (channel0, channel1) = Channel::create();
