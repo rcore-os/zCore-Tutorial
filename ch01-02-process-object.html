@@ -147,67 +147,16 @@
                 <div id="content" class="content">
                     <main>
                         <h4 id="对象管理器process-对象"><a class="header" href="#对象管理器process-对象">对象管理器：Process 对象</a></h4>
-<h2 id="权限"><a class="header" href="#权限">权限</a></h2>
-<p>内核对象的“<a href="https://fuchsia.dev/docs/concepts/kernel/rights">权限</a>”指定允许对内核对象进行哪些操作。权限与句柄相关联，并传达对关联句柄或与句柄关联的对象执行操作的特权。单个进程可能对具有不同权限的同一个内核对象有两个不同的句柄。</p>
-<h2 id="句柄"><a class="header" href="#句柄">句柄</a></h2>
+<h2 id="句柄操作内核对象的桥梁"><a class="header" href="#句柄操作内核对象的桥梁">句柄——操作内核对象的桥梁</a></h2>
+<p>在1.1中我们用Rust语言实现了一个最核心的内核对象，在本小节我们将逐步了解与内核对象相关的三个重要概念中的其他两个：<strong>句柄（Handle）和权限（Rights）</strong>。</p>
 <p>句柄是允许用户程序引用内核对象引用的一种内核结构，它可以被认为是与特定内核对象的会话或连接。</p>
 <p>通常情况下，多个进程通过不同的句柄同时访问同一个对象。对象可能有多个句柄（在一个或多个进程中）引用它们。但单个句柄只能绑定到单个进程或绑定到内核。</p>
-<p>当句柄绑定到内核时，我们说它是“在传输中”（'in-transit'）。</p>
-<p>在用户模式下，句柄只是某个系统调用返回的特定数字。只有“不在传输中”的句柄对用户模式可见。</p>
-<p>代表句柄的整数只对其所属的那个进程有意义。另一个进程中的相同数字可能不会映射到任何句柄，或者它可能映射到指向完全不同的内核对象的句柄。</p>
-<p>句柄的整数值是任何 32 位数字，但对应于<strong>ZX_HANDLE_INVALID</strong>的值将始终为 0。除此之外，有效句柄的整数值将始终具有句柄集的两个最低有效位. 可以使用<strong>ZX_HANDLE_FIXED_BITS_MASK</strong>访问代表这些位的掩码。</p>
-<p>句柄可以从一个进程移动到另一个进程，方法是将它们写入通道（使用<a href="https://fuchsia.dev/docs/reference/syscalls/channel_write"><code>channel_write()</code></a>），或者使用 <a href="https://fuchsia.dev/docs/reference/syscalls/process_start"><code>process_start()</code></a>传递一个句柄作为新进程中第一个线程的参数。对于几乎所有的对象，当最后一个打开的引用对象的句柄关闭时，对象要么被销毁，要么被置于可能无法撤消的最终状态。</p>
-<p>在 <code>Cargo.toml</code> 中加入 <code>bitflags</code> 库：</p>
-<pre><code class="language-rust noplaypen">[dependencies]
-bitflags = &quot;1.2&quot;
-</code></pre>
-<p>在 object 模块下定义两个子模块：</p>
+<h3 id="定义句柄"><a class="header" href="#定义句柄">定义句柄</a></h3>
+<p>在 object 模块下定义一个子模块：</p>
 <pre><code class="language-rust noplaypen">// src/object/mod.rs
 mod handle;
-mod rights;
 
 pub use self::handle::*;
-pub use self::rights::*;
-</code></pre>
-<p>定义权限：</p>
-<pre><code class="language-rust noplaypen">// src/object/rights.rs
-use bitflags::bitflags;
-
-bitflags! {
-    /// 句柄权限
-    pub struct Rights: u32 {
-        const DUPLICATE = 1 &lt;&lt; 0;
-        const TRANSFER = 1 &lt;&lt; 1;
-        const READ = 1 &lt;&lt; 2;
-        const WRITE = 1 &lt;&lt; 3;
-        const EXECUTE = 1 &lt;&lt; 4;
-        const MAP = 1 &lt;&lt; 5;
-        const GET_PROPERTY = 1 &lt;&lt; 6;
-        const SET_PROPERTY = 1 &lt;&lt; 7;
-        const ENUMERATE = 1 &lt;&lt; 8;
-        const DESTROY = 1 &lt;&lt; 9;
-        const SET_POLICY = 1 &lt;&lt; 10;
-        const GET_POLICY = 1 &lt;&lt; 11;
-        const SIGNAL = 1 &lt;&lt; 12;
-        const SIGNAL_PEER = 1 &lt;&lt; 13;
-        const WAIT = 1 &lt;&lt; 14;
-        const INSPECT = 1 &lt;&lt; 15;
-        const MANAGE_JOB = 1 &lt;&lt; 16;
-        const MANAGE_PROCESS = 1 &lt;&lt; 17;
-        const MANAGE_THREAD = 1 &lt;&lt; 18;
-        const APPLY_PROFILE = 1 &lt;&lt; 19;
-        const SAME_RIGHTS = 1 &lt;&lt; 31;
-
-        const BASIC = Self::TRANSFER.bits | Self::DUPLICATE.bits | Self::WAIT.bits | Self::INSPECT.bits;
-        const IO = Self::READ.bits | Self::WRITE.bits;
-
-        const DEFAULT_CHANNEL = Self::BASIC.bits &amp; !Self::DUPLICATE.bits | Self::IO.bits | Self::SIGNAL.bits | Self::SIGNAL_PEER.bits;
-        /// GET_PROPERTY ｜ SET_PROPERTY
-        const PROPERTY = Self::GET_PROPERTY.bits | Self::SET_PROPERTY.bits;
-        /// BASIC | IO | PROPERTY | ENUMERATE | DESTROY | SIGNAL | MANAGE_PROCESS | MANAGE_THREAD
-        const DEFAULT_PROCESS = Self::BASIC.bits | Self::IO.bits | Self::PROPERTY.bits | Self::ENUMERATE.bits | Self::DESTROY.bits | Self::SIGNAL.bits | Self::MANAGE_PROCESS.bits | Self::MANAGE_THREAD.bits;
-    }
-}
 </code></pre>
 <p>定义句柄：</p>
 <pre><code class="language-rust noplaypen">// src/object/handle.rs
@@ -220,27 +169,77 @@ pub struct Handle {
     pub object: Arc&lt;dyn KernelObject&gt;,
     pub rights: Rights,
 }
+</code></pre>
+<p>一个Handle包含object和right两个字段，object是实现了<code>KernelObject</code>Trait的内核对象，Rights是该句柄的权限，我们将在下面提到它。</p>
+<p>Arc<T>是一个可以在多线程上使用的引用计数类型，这个计数会随着 <code>Arc&lt;T&gt;</code> 的创建或复制而增加，并当 <code>Arc&lt;T&gt;</code> 生命周期结束被回收时减少。当这个计数变为零之后，这个计数变量本身以及被引用的变量都会从堆上被回收。</p>
+<p>我们为什么要在这里使用Arc智能指针呢？</p>
+<p>绝大多数内核对象的析构都发生在句柄数量为 0 时，也就是最后一个指向内核对象的Handle被关闭，该对象也随之消亡，抑或进入一种无法撤销的最终状态。很明显，这与Arc<T>天然的契合。</p>
+<h2 id="控制句柄的权限rights"><a class="header" href="#控制句柄的权限rights">控制句柄的权限——Rights</a></h2>
+<p>上文的Handle中有一个字段是rights，也就是句柄的权限。顾名思义，权限规定该句柄对引用的对象可以进行何种操作。</p>
+<p>当不同的权限和同一个对象绑定在一起时，也就形成了不同的句柄。</p>
+<h3 id="定义权限"><a class="header" href="#定义权限">定义权限</a></h3>
+<p>在 object 模块下定义一个子模块：</p>
+<pre><code class="language-rust noplaypen">// src/object/mod.rs
+mod rights;
 
-impl Handle {
+pub use self::rights::*;
+</code></pre>
+<p>权限就是u32的一个数字</p>
+<pre><code class="language-rust noplaypen">// src/object/rights.rs
+use bitflags::bitflags;
+
+bitflags! {
+    /// 句柄权限
+    pub struct Rights: u32 {
+        const DUPLICATE = 1 &lt;&lt; 0;
+        const TRANSFER = 1 &lt;&lt; 1;
+        const READ = 1 &lt;&lt; 2;
+        const WRITE = 1 &lt;&lt; 3;
+        const EXECUTE = 1 &lt;&lt; 4;
+		...
+    }
+
+</code></pre>
+<p><a href="https://docs.rs/bitflags/1.2.1/bitflags/"><strong>bitflags</strong></a> 是一个 Rust 中常用来比特标志位的 crate 。它提供了 一个 <code>bitflags!</code> 宏，如上面的代码段所展示的那样，借助 <code>bitflags!</code> 宏我们将一个 <code>u32</code> 的 rights 包装为一个 <code>Rights</code> 结构体。注意，在使用之前我们需要引入该 crate 的依赖：</p>
+<pre><code class="language-rust noplaypen"><span class="boring">Cargo.toml
+</span>
+[dependencies]
+bitflags = &quot;1.2&quot;
+</code></pre>
+<p>定义好权限之后，我们回到句柄相关方法的实现。</p>
+<p>首先是最简单的部分，创建一个handle，很显然我们需要提供两个参数，分别是句柄关联的内核对象和句柄的权限。</p>
+<pre><code class="language-rust noplaypen">impl Handle {
     /// 创建一个新句柄
     pub fn new(object: Arc&lt;dyn KernelObject&gt;, rights: Rights) -&gt; Self {
         Handle { object, rights }
     }
 }
 </code></pre>
-<h2 id="存储内核对象句柄"><a class="header" href="#存储内核对象句柄">存储内核对象句柄</a></h2>
-<blockquote>
-<p>添加成员变量 handles: BTreeMap&lt;HandleValue, Handle&gt;</p>
-<p>实现 create，add_handle，remove_handle 函数</p>
-</blockquote>
-<p>使用上一节的方法，实现一个空的 Process 对象：</p>
+<h3 id="测试"><a class="header" href="#测试">测试</a></h3>
+<p>好啦，让我们来测试一下！</p>
+<pre><code class="language-rust noplaypen">#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::object::DummyObject;
+    
+    #[test]
+    fn new_obj_handle() {
+        let obj = DummyObject::new();
+        let handle1 = Handle::new(obj.clone(), Rights::BASIC);
+    }
+}
+</code></pre>
+<h2 id="句柄存储的载体process"><a class="header" href="#句柄存储的载体process">句柄存储的载体——Process</a></h2>
+<p>实现完了句柄之后，我们开始考虑，句柄是存储在哪里的呢？</p>
+<p>通过前面的讲解，很明显Process拥有内核对象句柄，也就是说，句柄存储在Process中，所以我们先来实现一个Process：</p>
+<h3 id="实现空的process对象"><a class="header" href="#实现空的process对象">实现空的process对象</a></h3>
 <pre><code class="language-rust noplaypen">// src/task/process.rs
 /// 进程对象
 pub struct Process {
     base: KObjectBase,
     inner: Mutex&lt;ProcessInner&gt;,
 }
-
+// 宏的作用：补充
 impl_kobject!(Process);
 
 struct ProcessInner {
@@ -248,8 +247,11 @@ struct ProcessInner {
 }
 
 pub type HandleValue = u32;
-
-impl Process {
+</code></pre>
+<p>handles使用BTreeMap存储的key是HandleValue，value就是句柄。通过HandleValue实现对句柄的增删操作。HandleValue实际上就是u32类型是别名。</p>
+<p>把内部对象ProcessInner用自旋锁Mutex包起来，保证了互斥访问，因为Mutex会帮我们处理好并发问题，这一点已经在1.1节中详细说明。</p>
+<p>接下来我们实现创建一个Process的方法：</p>
+<pre><code class="language-rust noplaypen">impl Process {
     /// 创建一个新的进程对象
     pub fn new() -&gt; Arc&lt;Self&gt; {
         Arc::new(Process {
@@ -261,63 +263,52 @@ impl Process {
     }
 }
 </code></pre>
-<p>插入、删除句柄函数：</p>
-<pre><code class="language-rust noplaypen">// src/task/process.rs
-impl Process {
-    /// 添加一个新的对象句柄
-    pub fn add_handle(&amp;self, handle: Handle) -&gt; HandleValue {
-        let mut inner = self.inner.lock();
-        let value = (0 as HandleValue..)
-            .find(|idx| !inner.handles.contains_key(idx))
-            .unwrap();
-        inner.handles.insert(value, handle);
-        value
-    }
+<h4 id="单元测试"><a class="header" href="#单元测试">单元测试</a></h4>
+<p>我们已经实现了创建一个Process的方法，下面我们写一个单元测试：</p>
+<pre><code class="language-rust noplaypen">#[test]
+    fn new_proc() {
+        let proc = Process::new();
+        assert_eq!(proc.type_name(), &quot;Process&quot;);
+        assert_eq!(proc.name(), &quot;&quot;);
+        proc.set_name(&quot;proc1&quot;);
+        assert_eq!(proc.name(), &quot;proc1&quot;);
+        assert_eq!(
+            format!(&quot;{:?}&quot;, proc),
+            format!(&quot;Process({}, \&quot;proc1\&quot;)&quot;, proc.id())
+        );
 
-    /// 删除一个对象句柄
-    pub fn remove_handle(&amp;self, handle_value: HandleValue) {
-        self.inner.lock().handles.remove(&amp;handle_value);
+        let obj: Arc&lt;dyn KernelObject&gt; = proc;
+        assert_eq!(obj.type_name(), &quot;Process&quot;);
+        assert_eq!(obj.name(), &quot;proc1&quot;);
+        obj.set_name(&quot;proc2&quot;);
+        assert_eq!(obj.name(), &quot;proc2&quot;);
+        assert_eq!(
+            format!(&quot;{:?}&quot;, obj),
+            format!(&quot;Process({}, \&quot;proc2\&quot;)&quot;, obj.id())
+        );
     }
+</code></pre>
+<h3 id="process相关方法"><a class="header" href="#process相关方法">Process相关方法</a></h3>
+<h4 id="插入句柄"><a class="header" href="#插入句柄">插入句柄</a></h4>
+<p>在Process中添加一个新的handle，返回值是一个handleValue，也就是u32：</p>
+<pre><code class="language-rust noplaypen">pub fn add_handle(&amp;self, handle: Handle) -&gt; HandleValue {
+
+    let mut inner = self.inner.lock();
+    let value = (0 as HandleValue..)
+    	.find(|idx| !inner.handles.contains_key(idx))
+    	.unwrap();
+    // 插入BTreeMap
+    inner.handles.insert(value, handle);
+    value
+ }
+</code></pre>
+<h4 id="移除句柄"><a class="header" href="#移除句柄">移除句柄</a></h4>
+<p>删除Process中的一个句柄：</p>
+<pre><code class="language-rust noplaypen">pub fn remove_handle(&amp;self, handle_value: HandleValue) {
+	self.inner.lock().handles.remove(&amp;handle_value);
 }
 </code></pre>
-<h2 id="定义内核错误及-result-类型"><a class="header" href="#定义内核错误及-result-类型">定义内核错误及 <code>Result</code> 类型</a></h2>
-<pre><code class="language-rust noplaypen">// src/error.rs
-/// Zircon statuses are signed 32 bit integers. The space of values is
-/// divided as follows:
-/// - The zero value is for the OK status.
-/// - Negative values are defined by the system, in this file.
-/// - Positive values are reserved for protocol-specific error values,
-///   and will never be defined by the system.
-#[allow(non_camel_case_types, dead_code)]
-#[repr(i32)]
-#[derive(Debug, Clone, Copy)]
-pub enum ZxError {
-    OK = 0,
-
-    // ======= Internal failures =======
-    /// The system encountered an otherwise unspecified error
-    /// while performing the operation.
-    INTERNAL = -1,
-
-    /// The operation is not implemented, supported,
-    /// or enabled.
-    NOT_SUPPORTED = -2,
-
-    // ......
-
-    /// Connection was aborted.
-    CONNECTION_ABORTED = -76,
-}
-</code></pre>
-<pre><code class="language-rust noplaypen">// src/error.rs
-///
-pub type ZxResult&lt;T&gt; = Result&lt;T, ZxError&gt;;
-</code></pre>
-<h2 id="根据句柄查找内核对象"><a class="header" href="#根据句柄查找内核对象">根据句柄查找内核对象</a></h2>
-<blockquote>
-<p>实现 get_object_with_rights 等其它相关函数</p>
-<p>实现 handle 单元测试</p>
-</blockquote>
+<h4 id="根据句柄查找内核对象"><a class="header" href="#根据句柄查找内核对象">根据句柄查找内核对象</a></h4>
 <pre><code class="language-rust noplaypen">// src/task/process.rs
 impl Process {
     /// 根据句柄值查找内核对象，并检查权限
@@ -345,6 +336,53 @@ impl Process {
     }
 }
 </code></pre>
+<h4 id="zxresult"><a class="header" href="#zxresult">ZxResult</a></h4>
+<p>ZxResult是表示Zircon状态的i32值，值空间划分如下：</p>
+<ul>
+<li>0:ok</li>
+<li>负值：由系统定义（也就是这个文件）</li>
+<li>正值：被保留，用于协议特定的错误值，永远不会被系统定义。</li>
+</ul>
+<pre><code class="language-rust noplaypen">pub type ZxResult&lt;T&gt; = Result&lt;T, ZxError&gt;;
+
+#[allow(non_camel_case_types, dead_code)]
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+pub enum ZxError {
+    OK = 0,
+   	...
+   	
+    /// 一个不指向handle的特定的handle value
+    BAD_HANDLE = -11,
+    
+    /// 操作主体对于执行这个操作来说是错误的类型
+    /// 例如： 尝试执行 message_read 在 thread handle.
+    WRONG_TYPE = -12,
+    
+    // 权限检查错误
+    // 调用者没有执行该操作的权限
+    ACCESS_DENIED = -30,
+}
+</code></pre>
+<p>ZxResult<T>相当于Result&lt;T, ZxError&gt;，也就相当于我们自己定义了一种错误。</p>
+<h3 id="单元测试-1"><a class="header" href="#单元测试-1">单元测试</a></h3>
+<p>目前为止，我们已经实现了Process最基础的方法，下面我们来运行一个单元测试：</p>
+<pre><code class="language-rust noplaypen">fn proc_handle() {
+        let proc = Process::new();
+        let handle = Handle::new(proc.clone(), Rights::DEFAULT_PROCESS);
+        let handle_value = proc.add_handle(handle);
+
+        let object1: Arc&lt;Process&gt; = proc
+            .get_object_with_rights(handle_value, Rights::DEFAULT_PROCESS)
+            .expect(&quot;failed to get object&quot;);
+        assert!(Arc::ptr_eq(&amp;object1, &amp;proc));
+
+        proc.remove_handle(handle_value);
+    }
+</code></pre>
+<h2 id="总结"><a class="header" href="#总结">总结</a></h2>
+<p>在这一节中我们实现了内核对象的两个重要的概念，句柄（Handle）和权限（Rights），同时实现了句柄存储的载体——Process，并且实现了Process的基本方法，这将是我们继续探索zCore的基础。</p>
+<p>在下一节中，我们将介绍内核对象的传输器——管道（Channel）。</p>
 
                     </main>
 
