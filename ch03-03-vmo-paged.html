@@ -153,22 +153,434 @@
 我们在这里只实现一个简单版本，完整实现留给读者自行探索。</p>
 <p>介绍 commit 操作的意义和作用</p>
 </blockquote>
+<p>commit_page 和 commit_pages_with 函数的作用：用于检查物理页帧是否已经分配。</p>
 <h2 id="hal物理内存管理"><a class="header" href="#hal物理内存管理">HAL：物理内存管理</a></h2>
 <blockquote>
 <p>在 HAL 中实现 PhysFrame 和最简单的分配器</p>
 </blockquote>
+<h3 id="kernel-hal"><a class="header" href="#kernel-hal">kernel-hal</a></h3>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[repr(C)]
+pub struct PhysFrame {
+		// paddr 物理地址
+    paddr: PhysAddr,
+}
+
+impl PhysFrame {
+		// 分配物理页帧
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_frame_alloc&quot;]
+    pub fn alloc() -&gt; Option&lt;Self&gt; {
+        unimplemented!()
+    }
+
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_frame_alloc_contiguous&quot;]
+    pub fn alloc_contiguous_base(_size: usize, _align_log2: usize) -&gt; Option&lt;PhysAddr&gt; {
+        unimplemented!()
+    }
+
+    pub fn alloc_contiguous(size: usize, align_log2: usize) -&gt; Vec&lt;Self&gt; {
+        PhysFrame::alloc_contiguous_base(size, align_log2).map_or(Vec::new(), |base| {
+            (0..size)
+                .map(|i| PhysFrame {
+                    paddr: base + i * PAGE_SIZE,
+                })
+                .collect()
+        })
+    }
+
+    pub fn alloc_zeroed() -&gt; Option&lt;Self&gt; {
+        Self::alloc().map(|f| {
+            pmem_zero(f.addr(), PAGE_SIZE);
+            f
+        })
+    }
+
+    pub fn alloc_contiguous_zeroed(size: usize, align_log2: usize) -&gt; Vec&lt;Self&gt; {
+        PhysFrame::alloc_contiguous_base(size, align_log2).map_or(Vec::new(), |base| {
+            pmem_zero(base, size * PAGE_SIZE);
+            (0..size)
+                .map(|i| PhysFrame {
+                    paddr: base + i * PAGE_SIZE,
+                })
+                .collect()
+        })
+    }
+
+    pub fn addr(&amp;self) -&gt; PhysAddr {
+        self.paddr
+    }
+
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_zero_frame_paddr&quot;]
+    pub fn zero_frame_addr() -&gt; PhysAddr {
+        unimplemented!()
+    }
+}
+
+impl Drop for PhysFrame {
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_frame_dealloc&quot;]
+    fn drop(&amp;mut self) {
+        unimplemented!()
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="kernel-hal-unix"><a class="header" href="#kernel-hal-unix">kernel-hal-unix</a></h3>
+<p>通过下面的代码可以构造一个页帧号。<code>(PAGE_SIZE..PMEM_SIZE).step_by(PAGE_SIZE).collect()</code> 可以每隔 PAGE_SIZE 生成一个页帧的开始位置。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>lazy_static! {
+    static ref AVAILABLE_FRAMES: Mutex&lt;VecDeque&lt;usize&gt;&gt; =
+        Mutex::new((PAGE_SIZE..PMEM_SIZE).step_by(PAGE_SIZE).collect());
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>分配一块物理页帧就是从 AVAILABLE_FRAMES 中通过 pop_front 弹出一个页号</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl PhysFrame {
+    #[export_name = &quot;hal_frame_alloc&quot;]
+    pub fn alloc() -&gt; Option&lt;Self&gt; {
+        let ret = AVAILABLE_FRAMES
+            .lock()
+            .unwrap()
+            .pop_front()
+            .map(|paddr| PhysFrame { paddr });
+        trace!(&quot;frame alloc: {:?}&quot;, ret);
+        ret
+    }
+    #[export_name = &quot;hal_zero_frame_paddr&quot;]
+    pub fn zero_frame_addr() -&gt; PhysAddr {
+        0
+    }
+}
+
+impl Drop for PhysFrame {
+    #[export_name = &quot;hal_frame_dealloc&quot;]
+    fn drop(&amp;mut self) {
+        trace!(&quot;frame dealloc: {:?}&quot;, self);
+        AVAILABLE_FRAMES.lock().unwrap().push_back(self.paddr);
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <h2 id="辅助结构blockrange-迭代器"><a class="header" href="#辅助结构blockrange-迭代器">辅助结构：BlockRange 迭代器</a></h2>
 <blockquote>
 <p>实现 BlockRange</p>
 </blockquote>
+<p>在按页分配内存的 VMObjectPaged 的读和写的方法中会使用到一个 BlockIter 迭代器。BlockIter 主要用于将一段内存分块，每次返回这一块的信息也就是 BlockRange。</p>
+<h3 id="blockiter"><a class="header" href="#blockiter">BlockIter</a></h3>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Debug, Eq, PartialEq)]
+pub struct BlockRange {
+    pub block: usize,
+    pub begin: usize, // 块内地址开始位置
+    pub end: usize, // 块内地址结束位置
+    pub block_size_log2: u8,
+}
+
+/// Given a range and iterate sub-range for each block
+pub struct BlockIter {
+    pub begin: usize,
+    pub end: usize,
+    pub block_size_log2: u8,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>block_size_log2 是 log 以2为底 block size, 比如：block size 大小为4096，则 block_size_log2 为 12。block 是块编号。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl BlockRange {
+    pub fn len(&amp;self) -&gt; usize {
+        self.end - self.begin
+    }
+    pub fn is_full(&amp;self) -&gt; bool {
+        self.len() == (1usize &lt;&lt; self.block_size_log2)
+    }
+    pub fn is_empty(&amp;self) -&gt; bool {
+        self.len() == 0
+    }
+    pub fn origin_begin(&amp;self) -&gt; usize {
+        (self.block &lt;&lt; self.block_size_log2) + self.begin
+    }
+    pub fn origin_end(&amp;self) -&gt; usize {
+        (self.block &lt;&lt; self.block_size_log2) + self.end
+    }
+}
+
+impl Iterator for BlockIter {
+    type Item = BlockRange;
+
+    fn next(&amp;mut self) -&gt; Option&lt;&lt;Self as Iterator&gt;::Item&gt; {
+        if self.begin &gt;= self.end {
+            return None;
+        }
+        let block_size_log2 = self.block_size_log2;
+        let block_size = 1usize &lt;&lt; self.block_size_log2;
+        let block = self.begin / block_size;
+        let begin = self.begin % block_size;
+		// 只有最后一块需要计算块内最后的地址，其他的直接返回块的大小
+        let end = if block == self.end / block_size {
+            self.end % block_size
+        } else {
+            block_size
+        };
+        self.begin += end - begin;
+        Some(BlockRange {
+            block,
+            begin,
+            end,
+            block_size_log2,
+        })
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <h2 id="实现按页分配的-vmo"><a class="header" href="#实现按页分配的-vmo">实现按页分配的 VMO</a></h2>
 <blockquote>
 <p>实现 for_each_page, commit, read, write 函数</p>
 </blockquote>
+<p>按页分配的 VMO 结构体如下：</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct VMObjectPaged {
+    inner: Mutex&lt;VMObjectPagedInner&gt;,
+}
+
+/// The mutable part of `VMObjectPaged`.
+#[derive(Default)]
+struct VMObjectPagedInner {
+    /// Physical frames of this VMO.
+    frames: Vec&lt;PhysFrame&gt;,
+    /// Cache Policy
+    cache_policy: CachePolicy,
+    /// Is contiguous
+    contiguous: bool,
+    /// Sum of pin_count
+    pin_count: usize,
+    /// All mappings to this VMO.
+    mappings: Vec&lt;Weak&lt;VmMapping&gt;&gt;,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>VMObjectPage 有两个 new 方法</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VMObjectPaged {
+    /// Create a new VMO backing on physical memory allocated in pages.
+    pub fn new(pages: usize) -&gt; Arc&lt;Self&gt; {
+        let mut frames = Vec::new();
+        frames.resize_with(pages, || PhysFrame::alloc_zeroed().unwrap()); // 分配 pages 个页帧号，并将这些页帧号的内存清零
+        Arc::new(VMObjectPaged {
+            inner: Mutex::new(VMObjectPagedInner {
+                frames,
+                ..Default::default()
+            }),
+        })
+    }
+
+    /// Create a list of contiguous pages
+    pub fn new_contiguous(pages: usize, align_log2: usize) -&gt; ZxResult&lt;Arc&lt;Self&gt;&gt; {
+        let frames = PhysFrame::alloc_contiguous_zeroed(pages, align_log2 - PAGE_SIZE_LOG2);
+        if frames.is_empty() {
+            return Err(ZxError::NO_MEMORY);
+        }
+        Ok(Arc::new(VMObjectPaged {
+            inner: Mutex::new(VMObjectPagedInner {
+                frames,
+                contiguous: true,
+                ..Default::default()
+            }),
+        }))
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>VMObjectPaged 的读和写用到了一个非常重要的函数 for_each_page 。首先它先构造了一个 BlockIter 迭代器，然后调用传入的函数进行读或者写。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VMObjectPagedInner {
+		/// Helper function to split range into sub-ranges within pages.
+    ///
+    /// ```text
+    /// VMO range:
+    /// |----|----|----|----|----|
+    ///
+    /// buf:
+    ///            [====len====]
+    /// |--offset--|
+    ///
+    /// sub-ranges:
+    ///            [===]
+    ///                [====]
+    ///                     [==]
+    /// ```
+    ///
+    /// `f` is a function to process in-page ranges.
+    /// It takes 2 arguments:
+    /// * `paddr`: the start physical address of the in-page range.
+    /// * `buf_range`: the range in view of the input buffer.
+		fn for_each_page(
+        &amp;mut self,
+        offset: usize,
+        buf_len: usize,
+        mut f: impl FnMut(PhysAddr, Range&lt;usize&gt;),
+    ) {
+        let iter = BlockIter {
+            begin: offset,
+            end: offset + buf_len,
+            block_size_log2: 12,
+        };
+        for block in iter {
+						// 获取这一块开始的物理地址
+            let paddr = self.frames[block.block].addr();
+						// 这块物理地址的范围
+            let buf_range = block.origin_begin() - offset..block.origin_end() - offset;
+            f(paddr + block.begin, buf_range);
+        }  
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>read 和 write 函数，一个传入的是 <code>kernel_hal::pmem_read</code> ，另外一个是 <code>kernel_hal::pmem_write</code></p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VMObjectTrait for VMObjectPaged {
+    fn read(&amp;self, offset: usize, buf: &amp;mut [u8]) -&gt; ZxResult {
+        let mut inner = self.inner.lock();
+        if inner.cache_policy != CachePolicy::Cached {
+            return Err(ZxError::BAD_STATE);
+        }
+        inner.for_each_page(offset, buf.len(), |paddr, buf_range| {
+            kernel_hal::pmem_read(paddr, &amp;mut buf[buf_range]);
+        });
+        Ok(())
+    }
+
+    fn write(&amp;self, offset: usize, buf: &amp;[u8]) -&gt; ZxResult {
+        let mut inner = self.inner.lock();
+        if inner.cache_policy != CachePolicy::Cached {
+            return Err(ZxError::BAD_STATE);
+        }
+        inner.for_each_page(offset, buf.len(), |paddr, buf_range| {
+            kernel_hal::pmem_write(paddr, &amp;buf[buf_range]);
+        });
+        Ok(())
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>commit 函数</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VMObjectTrait for VMObjectPaged {
+		fn commit_page(&amp;self, page_idx: usize, _flags: MMUFlags) -&gt; ZxResult&lt;PhysAddr&gt; {
+        let inner = self.inner.lock();
+        Ok(inner.frames[page_idx].addr())
+    }
+
+    fn commit_pages_with(
+        &amp;self,
+        f: &amp;mut dyn FnMut(&amp;mut dyn FnMut(usize, MMUFlags) -&gt; ZxResult&lt;PhysAddr&gt;) -&gt; ZxResult,
+    ) -&gt; ZxResult {
+        let inner = self.inner.lock();
+        f(&amp;mut |page_idx, _| Ok(inner.frames[page_idx].addr()))
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <h2 id="vmo-复制"><a class="header" href="#vmo-复制">VMO 复制</a></h2>
 <blockquote>
 <p>实现 create_child 函数</p>
 </blockquote>
+<p>create_child 是将原 VMObjectPaged 的内容拷贝一份</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// object/vm/vmo/paged.rs
+
+impl VMObjectTrait for VMObjectPaged {
+		fn create_child(&amp;self, offset: usize, len: usize) -&gt; ZxResult&lt;Arc&lt;dyn VMObjectTrait&gt;&gt; {
+        assert!(page_aligned(offset));
+        assert!(page_aligned(len));
+        let mut inner = self.inner.lock();
+        let child = inner.create_child(offset, len)?;
+        Ok(child)
+    }
+
+		/// Create a snapshot child VMO.
+    fn create_child(&amp;mut self, offset: usize, len: usize) -&gt; ZxResult&lt;Arc&lt;VMObjectPaged&gt;&gt; {
+        // clone contiguous vmo is no longer permitted
+        // https://fuchsia.googlesource.com/fuchsia/+/e6b4c6751bbdc9ed2795e81b8211ea294f139a45
+        if self.contiguous {
+            return Err(ZxError::INVALID_ARGS);
+        }
+        if self.cache_policy != CachePolicy::Cached || self.pin_count != 0 {
+            return Err(ZxError::BAD_STATE);
+        }
+        let mut frames = Vec::with_capacity(pages(len));
+        for _ in 0..pages(len) {
+            frames.push(PhysFrame::alloc().ok_or(ZxError::NO_MEMORY)?);
+        }
+        for (i, frame) in frames.iter().enumerate() {
+            if let Some(src_frame) = self.frames.get(pages(offset) + i) {
+                kernel_hal::frame_copy(src_frame.addr(), frame.addr())
+            } else {
+                kernel_hal::pmem_zero(frame.addr(), PAGE_SIZE);
+            }
+        }
+        // create child VMO
+        let child = Arc::new(VMObjectPaged {
+            inner: Mutex::new(VMObjectPagedInner {
+                frames,
+                ..Default::default()
+            }),
+        });
+        Ok(child)
+    }
+}
+
+// kernel-hal-unix/sr/lib.rs
+
+/// Copy content of `src` frame to `target` frame
+#[export_name = &quot;hal_frame_copy&quot;]
+pub fn frame_copy(src: PhysAddr, target: PhysAddr) {
+    trace!(&quot;frame_copy: {:#x} &lt;- {:#x}&quot;, target, src);
+    assert!(src + PAGE_SIZE &lt;= PMEM_SIZE &amp;&amp; target + PAGE_SIZE &lt;= PMEM_SIZE);
+    ensure_mmap_pmem();
+    unsafe {
+        let buf = phys_to_virt(src) as *const u8;
+        buf.copy_to_nonoverlapping(phys_to_virt(target) as _, PAGE_SIZE);
+    }
+}
+
+/// Zero physical memory at `[paddr, paddr + len)`
+#[export_name = &quot;hal_pmem_zero&quot;]
+pub fn pmem_zero(paddr: PhysAddr, len: usize) {
+    trace!(&quot;pmem_zero: addr={:#x}, len={:#x}&quot;, paddr, len);
+    assert!(paddr + len &lt;= PMEM_SIZE);
+    ensure_mmap_pmem();
+    unsafe {
+        core::ptr::write_bytes(phys_to_virt(paddr) as *mut u8, 0, len);
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 
                     </main>
 

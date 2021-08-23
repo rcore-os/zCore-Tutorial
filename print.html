@@ -955,6 +955,7 @@ impl Process {
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="内存管理"><a class="header" href="#内存管理">内存管理</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="zircon-内存管理模型"><a class="header" href="#zircon-内存管理模型">Zircon 内存管理模型</a></h1>
+<p>Zircon 中有两个跟内存管理有关的对象 VMO（Virtual Memory Object）和 VMAR （Virtual Memory Address Region）。VMO 主要负责管理物理内存页面，VMAR 主要负责进程虚拟内存管理。当创建一个进程的时候，需要使用到内存的时候，都需要创建一个 VMO，然后将这个 VMO map 到 VMAR上面。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="物理内存vmo-对象"><a class="header" href="#物理内存vmo-对象">物理内存：VMO 对象</a></h1>
 <h2 id="vmo-简介"><a class="header" href="#vmo-简介">VMO 简介</a></h2>
 <blockquote>
@@ -967,20 +968,396 @@ impl Process {
 <blockquote>
 <p>实现 VmObject 结构，其中定义 VmObjectTrait 接口，并提供三个具体实现 Paged, Physical, Slice</p>
 </blockquote>
+<p>VmObject 结构体</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// vm/vmo/mod.rs
+pub struct VmObject {
+    base: KObjectBase,
+    resizable: bool,
+    trait_: Arc&lt;dyn VMObjectTrait&gt;,
+    inner: Mutex&lt;VmObjectInner&gt;,
+}
+
+impl_kobject!(VmObject);
+
+#[derive(Default)]
+struct VmObjectInner {
+    parent: Weak&lt;VmObject&gt;,
+    children: Vec&lt;Weak&lt;VmObject&gt;&gt;,
+    mapping_count: usize,
+    content_size: usize,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p><code>trait_</code> 指向实现了 VMObjectTrait 的对象，它由三个具体实现，分别是 VMObjectPage, VMObjectPhysical, VMObjectSlice。VMObjectPaged 是按页分配内存，VMObjectSlice 主要用于共享内存，VMObjectPhysical 在 zCore-Tutorial 中暂时不会使用到。<br />
+<code>mapping_count</code> 表示这个 VmObject 被 map 到几个 VMAR 中。<br />
+<code>content_size</code> 是分配的物理内存的大小。<br />
+VmObjectTrait 定义了一组 VMObject* 共有的方法</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait VMObjectTrait: Sync + Send {
+    /// Read memory to `buf` from VMO at `offset`.
+    fn read(&amp;self, offset: usize, buf: &amp;mut [u8]) -&gt; ZxResult;
+
+    /// Write memory from `buf` to VMO at `offset`.
+    fn write(&amp;self, offset: usize, buf: &amp;[u8]) -&gt; ZxResult;
+
+    /// Resets the range of bytes in the VMO from `offset` to `offset+len` to 0.
+    fn zero(&amp;self, offset: usize, len: usize) -&gt; ZxResult;
+
+    /// Get the length of VMO.
+    fn len(&amp;self) -&gt; usize;
+
+    /// Set the length of VMO.
+    fn set_len(&amp;self, len: usize) -&gt; ZxResult;
+
+    /// Commit a page.
+    fn commit_page(&amp;self, page_idx: usize, flags: MMUFlags) -&gt; ZxResult&lt;PhysAddr&gt;;
+
+    /// Commit pages with an external function f.
+    /// the vmo is internally locked before it calls f,
+    /// allowing `VmMapping` to avoid deadlock
+    fn commit_pages_with(
+        &amp;self,
+        f: &amp;mut dyn FnMut(&amp;mut dyn FnMut(usize, MMUFlags) -&gt; ZxResult&lt;PhysAddr&gt;) -&gt; ZxResult,
+    ) -&gt; ZxResult;
+
+    /// Commit allocating physical memory.
+    fn commit(&amp;self, offset: usize, len: usize) -&gt; ZxResult;
+
+    /// Decommit allocated physical memory.
+    fn decommit(&amp;self, offset: usize, len: usize) -&gt; ZxResult;
+
+    /// Create a child VMO.
+    fn create_child(&amp;self, offset: usize, len: usize) -&gt; ZxResult&lt;Arc&lt;dyn VMObjectTrait&gt;&gt;;
+
+    /// Append a mapping to the VMO's mapping list.
+    fn append_mapping(&amp;self, _mapping: Weak&lt;VmMapping&gt;) {}
+
+    /// Remove a mapping from the VMO's mapping list.
+    fn remove_mapping(&amp;self, _mapping: Weak&lt;VmMapping&gt;) {}
+
+    /// Complete the VmoInfo.
+    fn complete_info(&amp;self, info: &amp;mut VmoInfo);
+
+    /// Get the cache policy.
+    fn cache_policy(&amp;self) -&gt; CachePolicy;
+
+    /// Set the cache policy.
+    fn set_cache_policy(&amp;self, policy: CachePolicy) -&gt; ZxResult;
+
+    /// Count committed pages of the VMO.
+    fn committed_pages_in_range(&amp;self, start_idx: usize, end_idx: usize) -&gt; usize;
+
+    /// Pin the given range of the VMO.
+    fn pin(&amp;self, _offset: usize, _len: usize) -&gt; ZxResult {
+        Err(ZxError::NOT_SUPPORTED)
+    }
+
+    /// Unpin the given range of the VMO.
+    fn unpin(&amp;self, _offset: usize, _len: usize) -&gt; ZxResult {
+        Err(ZxError::NOT_SUPPORTED)
+    }
+
+    /// Returns true if the object is backed by a contiguous range of physical memory.
+    fn is_contiguous(&amp;self) -&gt; bool {
+        false
+    }
+
+    /// Returns true if the object is backed by RAM.
+    fn is_paged(&amp;self) -&gt; bool {
+        false
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p><code>read()</code> 和 <code>write()</code> 用于读和写，<code>zero()</code> 用于清空一段内存。<br />
+比较特别的是：<code>fn commit_page(&amp;self, page_idx: usize, flags: MMUFlags) -&gt; ZxResult&lt;PhysAddr&gt;;</code>，<code>fn commit(&amp;self, offset: usize, len: usize) -&gt; ZxResult;</code> 和 <code>fn commit(&amp;self, offset: usize, len: usize) -&gt; ZxResult;</code> 主要用于分配物理内存，因为一些内存分配策略，物理内存并不一定是马上分配的，所以需要 commit 来分配一块内存。<br />
+<code>pin</code> 和 <code>unpin</code> 在这里主要用于增加和减少引用计数。<br />
+VmObject 实现了不同的 new 方法，它们之间的差别在于实现 trait_ 的对象不同。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VmObject {
+    /// Create a new VMO backing on physical memory allocated in pages.
+    pub fn new_paged(pages: usize) -&gt; Arc&lt;Self&gt; {
+        Self::new_paged_with_resizable(false, pages)
+    }
+
+    /// Create a new VMO, which can be resizable, backing on physical memory allocated in pages.
+    pub fn new_paged_with_resizable(resizable: bool, pages: usize) -&gt; Arc&lt;Self&gt; {
+        let base = KObjectBase::new();
+        Arc::new(VmObject {
+            resizable,
+            trait_: VMObjectPaged::new(pages),
+            inner: Mutex::new(VmObjectInner::default()),
+            base,
+        })
+    }
+
+    /// Create a new VMO representing a piece of contiguous physical memory.
+    pub fn new_physical(paddr: PhysAddr, pages: usize) -&gt; Arc&lt;Self&gt; {
+        Arc::new(VmObject {
+            base: KObjectBase::new(),
+            resizable: false,
+            trait_: VMObjectPhysical::new(paddr, pages),
+            inner: Mutex::new(VmObjectInner::default()),
+        })
+    }
+
+    /// Create a VM object referring to a specific contiguous range of physical frame.  
+    pub fn new_contiguous(pages: usize, align_log2: usize) -&gt; ZxResult&lt;Arc&lt;Self&gt;&gt; {
+        let vmo = Arc::new(VmObject {
+            base: KObjectBase::new(),
+            resizable: false,
+            trait_: VMObjectPaged::new_contiguous(pages, align_log2)?,
+            inner: Mutex::new(VmObjectInner::default()),
+        });
+        Ok(vmo)
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>通过 <code>pub fn create_child(self: &amp;Arc&lt;Self&gt;, resizable: bool, offset: usize, len: usize)</code> 可以创建一个 VMObject 的快照副本。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VmObject {
+	/// Create a child VMO.
+    pub fn create_child(
+        self: &amp;Arc&lt;Self&gt;,
+        resizable: bool,
+        offset: usize,
+        len: usize,
+    ) -&gt; ZxResult&lt;Arc&lt;Self&gt;&gt; {
+		// Create child VmObject
+        let base = KObjectBase::with_name(&amp;self.base.name());
+        let trait_ = self.trait_.create_child(offset, len)?;
+        let child = Arc::new(VmObject {
+            base,
+            resizable,
+            trait_,
+            inner: Mutex::new(VmObjectInner {
+                parent: Arc::downgrade(self),
+                ..VmObjectInner::default()
+            }),
+        });
+		// Add child VmObject to this VmObject
+        self.add_child(&amp;child);
+        Ok(child)
+    }
+
+	/// Add child to the list
+    fn add_child(&amp;self, child: &amp;Arc&lt;VmObject&gt;) {
+        let mut inner = self.inner.lock();
+		// 判断这个 child VmObject 是否还是存在，通过获取子对象的强引用数来判断
+        inner.children.retain(|x| x.strong_count() != 0);
+		// downgrade 将 Arc 转为 Weak
+        inner.children.push(Arc::downgrade(child));
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <h2 id="hal用文件模拟物理内存"><a class="header" href="#hal用文件模拟物理内存">HAL：用文件模拟物理内存</a></h2>
 <blockquote>
 <p>初步介绍 mmap，引出用文件模拟物理内存的思想</p>
 <p>创建文件并用 mmap 线性映射到进程地址空间</p>
 <p>实现 pmem_read, pmem_write</p>
 </blockquote>
+<h3 id="mmap"><a class="header" href="#mmap">mmap</a></h3>
+<p>mmap是一种内存映射文件的方法，将一个文件或者其它对象映射到进程的地址空间，实现文件磁盘地址和进程虚拟地址空间中一段虚拟地址一一对应的关系。实现这样的映射关系后，进程就可以采用指针的方式读写操作这一段内存，而系统会自动回写脏页面到对应的文件磁盘上，即完成了对文件的操作而不必再调用read,write等系统调用函数。相反，内核空间对这段区域的修改也直接反映用户空间，从而可以实现不同进程间的文件共享。因此，新建一个文件，然后调用 mmap，其实就相当于分配了一块物理内存，因此我们可以用文件来模拟物理内存。
+<img src="img/mmap.png" alt="mmap.png" /></p>
+<h3 id="分配地址空间"><a class="header" href="#分配地址空间">分配地址空间</a></h3>
+<p>创建一个文件用于 mmap 系统调用。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn create_pmem_file() -&gt; File {
+    let dir = tempdir().expect(&quot;failed to create pmem dir&quot;);
+    let path = dir.path().join(&quot;pmem&quot;);
+
+    // workaround on macOS to avoid permission denied.
+    // see https://jiege.ch/software/2020/02/07/macos-mmap-exec/ for analysis on this problem.
+    #[cfg(target_os = &quot;macos&quot;)]
+    std::mem::forget(dir);
+
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(&amp;path)
+        .expect(&quot;failed to create pmem file&quot;);
+    file.set_len(PMEM_SIZE as u64)
+        .expect(&quot;failed to resize file&quot;);
+    trace!(&quot;create pmem file: path={:?}, size={:#x}&quot;, path, PMEM_SIZE);
+    let prot = libc::PROT_READ | libc::PROT_WRITE;
+    // 调用 mmap （这个不是系统调用）进行文件和内存之间的双向映射
+    mmap(file.as_raw_fd(), 0, PMEM_SIZE, phys_to_virt(0), prot);
+    file
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>mmap:</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Mmap frame file `fd` to `vaddr`.
+fn mmap(fd: libc::c_int, offset: usize, len: usize, vaddr: VirtAddr, prot: libc::c_int) {
+    // 根据不同的操作系统去修改权限
+	// workaround on macOS to write text section.
+    #[cfg(target_os = &quot;macos&quot;)]
+    let prot = if prot &amp; libc::PROT_EXEC != 0 {
+        prot | libc::PROT_WRITE
+    } else {
+        prot
+    };
+		
+	// 调用 mmap 系统调用，ret 为返回值
+    let ret = unsafe {
+        let flags = libc::MAP_SHARED | libc::MAP_FIXED;
+        libc::mmap(vaddr as _, len, prot, flags, fd, offset as _)
+    } as usize;
+    trace!(
+        &quot;mmap file: fd={}, offset={:#x}, len={:#x}, vaddr={:#x}, prot={:#b}&quot;,
+        fd,
+        offset,
+        len,
+        vaddr,
+        prot,
+    );
+    assert_eq!(ret, vaddr, &quot;failed to mmap: {:?}&quot;, Error::last_os_error());
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>最后创建一个全局变量保存这个分配的内存</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>lazy_static! {
+    static ref FRAME_FILE: File = create_pmem_file();
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="pmem_read-和-pmem_write"><a class="header" href="#pmem_read-和-pmem_write">pmem_read 和 pmem_write</a></h3>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Read physical memory from `paddr` to `buf`.
+#[export_name = &quot;hal_pmem_read&quot;]
+pub fn pmem_read(paddr: PhysAddr, buf: &amp;mut [u8]) {
+    trace!(&quot;pmem read: paddr={:#x}, len={:#x}&quot;, paddr, buf.len());
+    assert!(paddr + buf.len() &lt;= PMEM_SIZE);
+    ensure_mmap_pmem();
+    unsafe {
+        (phys_to_virt(paddr) as *const u8).copy_to_nonoverlapping(buf.as_mut_ptr(), buf.len());
+    }
+}
+
+/// Write physical memory to `paddr` from `buf`.
+#[export_name = &quot;hal_pmem_write&quot;]
+pub fn pmem_write(paddr: PhysAddr, buf: &amp;[u8]) {
+    trace!(&quot;pmem write: paddr={:#x}, len={:#x}&quot;, paddr, buf.len());
+    assert!(paddr + buf.len() &lt;= PMEM_SIZE);
+    ensure_mmap_pmem();
+    unsafe {
+        buf.as_ptr()
+            .copy_to_nonoverlapping(phys_to_virt(paddr) as _, buf.len());
+    }
+}
+
+/// Ensure physical memory are mmapped and accessible.
+fn ensure_mmap_pmem() {
+    FRAME_FILE.as_raw_fd();
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p><code>ensure_mmap_pmem()</code> 确保物理内存已经映射<br />
+<code>copy_to_nonoverlapping(self, dst *mut T, count: usize)</code> 将 self 的字节序列拷贝到 dst 中，source 和 destination 是不互相重叠的。<code>(phys_to_virt(paddr) as *const u8).copy_to_nonoverlapping(buf.as_mut_ptr(), buf.len());</code> 通过 <code>phys_to_virt(paddr)</code> 将 paddr 加上 PMEM_BASE 转为虚拟地址，然后将里面的字节拷贝到 buf 里面。</p>
 <h2 id="实现物理内存-vmo"><a class="header" href="#实现物理内存-vmo">实现物理内存 VMO</a></h2>
 <blockquote>
-<p>用 HAL 实现 VmObjectPhysical 的方法，并做单元测试</p>
+<p>用 HAL 实现 VmObjectPhysical 的方法，并做单元测试
+物理内存 VMO 结构体：</p>
 </blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct VMObjectPhysical {
+    paddr: PhysAddr,
+    pages: usize,
+    /// Lock this when access physical memory.
+    data_lock: Mutex&lt;()&gt;,
+    inner: Mutex&lt;VMObjectPhysicalInner&gt;,
+}
+
+struct VMObjectPhysicalInner {
+    cache_policy: CachePolicy,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>这里比较奇怪的是 data_lock 这个字段，这个字段里 Mutex 的泛型类型是一个 unit type，其实相当于它是没有“值”的，它只是起到一个锁的作用。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VMObjectTrait for VMObjectPhysical {
+    fn read(&amp;self, offset: usize, buf: &amp;mut [u8]) -&gt; ZxResult {
+        let _ = self.data_lock.lock(); // 先获取锁
+        assert!(offset + buf.len() &lt;= self.len());
+        kernel_hal::pmem_read(self.paddr + offset, buf); // 对一块物理内存进行读
+        Ok(())
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <h2 id="实现切片-vmo"><a class="header" href="#实现切片-vmo">实现切片 VMO</a></h2>
 <blockquote>
-<p>实现 VmObjectSlice，并做单元测试</p>
+<p>实现 VmObjectSlice，并做单元测试
+VMObjectSlice 中的 parent 用于指向一个实际的 VMO 对象，比如：VMObjectPaged，这样通过 VMObjectSlice 就可以实现对 VMObjectPaged 的共享。</p>
 </blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct VMObjectSlice {
+    /// Parent node.
+    parent: Arc&lt;dyn VMObjectTrait&gt;,
+    /// The offset from parent.
+    offset: usize,
+    /// The size in bytes.
+    size: usize,
+}
+
+impl VMObjectSlice {
+    pub fn new(parent: Arc&lt;dyn VMObjectTrait&gt;, offset: usize, size: usize) -&gt; Arc&lt;Self&gt; {
+        Arc::new(VMObjectSlice {
+            parent,
+            offset,
+            size,
+        })
+    }
+
+    fn check_range(&amp;self, offset: usize, len: usize) -&gt; ZxResult {
+        if offset + len &gt;= self.size {
+            return Err(ZxError::OUT_OF_RANGE);
+        }
+        Ok(())
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>VMObjectSlice 实现的读写，第一步是 <code>check_range</code> ，第二步是调用 parent 中的读写方法。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VMObjectTrait for VMObjectSlice {
+    fn read(&amp;self, offset: usize, buf: &amp;mut [u8]) -&gt; ZxResult {
+        self.check_range(offset, buf.len())?;
+        self.parent.read(offset + self.offset, buf)
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="物理内存按页分配的-vmo"><a class="header" href="#物理内存按页分配的-vmo">物理内存：按页分配的 VMO</a></h1>
 <h2 id="简介"><a class="header" href="#简介">简介</a></h2>
 <blockquote>
@@ -988,22 +1365,434 @@ impl Process {
 我们在这里只实现一个简单版本，完整实现留给读者自行探索。</p>
 <p>介绍 commit 操作的意义和作用</p>
 </blockquote>
+<p>commit_page 和 commit_pages_with 函数的作用：用于检查物理页帧是否已经分配。</p>
 <h2 id="hal物理内存管理"><a class="header" href="#hal物理内存管理">HAL：物理内存管理</a></h2>
 <blockquote>
 <p>在 HAL 中实现 PhysFrame 和最简单的分配器</p>
 </blockquote>
+<h3 id="kernel-hal"><a class="header" href="#kernel-hal">kernel-hal</a></h3>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[repr(C)]
+pub struct PhysFrame {
+		// paddr 物理地址
+    paddr: PhysAddr,
+}
+
+impl PhysFrame {
+		// 分配物理页帧
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_frame_alloc&quot;]
+    pub fn alloc() -&gt; Option&lt;Self&gt; {
+        unimplemented!()
+    }
+
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_frame_alloc_contiguous&quot;]
+    pub fn alloc_contiguous_base(_size: usize, _align_log2: usize) -&gt; Option&lt;PhysAddr&gt; {
+        unimplemented!()
+    }
+
+    pub fn alloc_contiguous(size: usize, align_log2: usize) -&gt; Vec&lt;Self&gt; {
+        PhysFrame::alloc_contiguous_base(size, align_log2).map_or(Vec::new(), |base| {
+            (0..size)
+                .map(|i| PhysFrame {
+                    paddr: base + i * PAGE_SIZE,
+                })
+                .collect()
+        })
+    }
+
+    pub fn alloc_zeroed() -&gt; Option&lt;Self&gt; {
+        Self::alloc().map(|f| {
+            pmem_zero(f.addr(), PAGE_SIZE);
+            f
+        })
+    }
+
+    pub fn alloc_contiguous_zeroed(size: usize, align_log2: usize) -&gt; Vec&lt;Self&gt; {
+        PhysFrame::alloc_contiguous_base(size, align_log2).map_or(Vec::new(), |base| {
+            pmem_zero(base, size * PAGE_SIZE);
+            (0..size)
+                .map(|i| PhysFrame {
+                    paddr: base + i * PAGE_SIZE,
+                })
+                .collect()
+        })
+    }
+
+    pub fn addr(&amp;self) -&gt; PhysAddr {
+        self.paddr
+    }
+
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_zero_frame_paddr&quot;]
+    pub fn zero_frame_addr() -&gt; PhysAddr {
+        unimplemented!()
+    }
+}
+
+impl Drop for PhysFrame {
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_frame_dealloc&quot;]
+    fn drop(&amp;mut self) {
+        unimplemented!()
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="kernel-hal-unix"><a class="header" href="#kernel-hal-unix">kernel-hal-unix</a></h3>
+<p>通过下面的代码可以构造一个页帧号。<code>(PAGE_SIZE..PMEM_SIZE).step_by(PAGE_SIZE).collect()</code> 可以每隔 PAGE_SIZE 生成一个页帧的开始位置。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>lazy_static! {
+    static ref AVAILABLE_FRAMES: Mutex&lt;VecDeque&lt;usize&gt;&gt; =
+        Mutex::new((PAGE_SIZE..PMEM_SIZE).step_by(PAGE_SIZE).collect());
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>分配一块物理页帧就是从 AVAILABLE_FRAMES 中通过 pop_front 弹出一个页号</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl PhysFrame {
+    #[export_name = &quot;hal_frame_alloc&quot;]
+    pub fn alloc() -&gt; Option&lt;Self&gt; {
+        let ret = AVAILABLE_FRAMES
+            .lock()
+            .unwrap()
+            .pop_front()
+            .map(|paddr| PhysFrame { paddr });
+        trace!(&quot;frame alloc: {:?}&quot;, ret);
+        ret
+    }
+    #[export_name = &quot;hal_zero_frame_paddr&quot;]
+    pub fn zero_frame_addr() -&gt; PhysAddr {
+        0
+    }
+}
+
+impl Drop for PhysFrame {
+    #[export_name = &quot;hal_frame_dealloc&quot;]
+    fn drop(&amp;mut self) {
+        trace!(&quot;frame dealloc: {:?}&quot;, self);
+        AVAILABLE_FRAMES.lock().unwrap().push_back(self.paddr);
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <h2 id="辅助结构blockrange-迭代器"><a class="header" href="#辅助结构blockrange-迭代器">辅助结构：BlockRange 迭代器</a></h2>
 <blockquote>
 <p>实现 BlockRange</p>
 </blockquote>
+<p>在按页分配内存的 VMObjectPaged 的读和写的方法中会使用到一个 BlockIter 迭代器。BlockIter 主要用于将一段内存分块，每次返回这一块的信息也就是 BlockRange。</p>
+<h3 id="blockiter"><a class="header" href="#blockiter">BlockIter</a></h3>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Debug, Eq, PartialEq)]
+pub struct BlockRange {
+    pub block: usize,
+    pub begin: usize, // 块内地址开始位置
+    pub end: usize, // 块内地址结束位置
+    pub block_size_log2: u8,
+}
+
+/// Given a range and iterate sub-range for each block
+pub struct BlockIter {
+    pub begin: usize,
+    pub end: usize,
+    pub block_size_log2: u8,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>block_size_log2 是 log 以2为底 block size, 比如：block size 大小为4096，则 block_size_log2 为 12。block 是块编号。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl BlockRange {
+    pub fn len(&amp;self) -&gt; usize {
+        self.end - self.begin
+    }
+    pub fn is_full(&amp;self) -&gt; bool {
+        self.len() == (1usize &lt;&lt; self.block_size_log2)
+    }
+    pub fn is_empty(&amp;self) -&gt; bool {
+        self.len() == 0
+    }
+    pub fn origin_begin(&amp;self) -&gt; usize {
+        (self.block &lt;&lt; self.block_size_log2) + self.begin
+    }
+    pub fn origin_end(&amp;self) -&gt; usize {
+        (self.block &lt;&lt; self.block_size_log2) + self.end
+    }
+}
+
+impl Iterator for BlockIter {
+    type Item = BlockRange;
+
+    fn next(&amp;mut self) -&gt; Option&lt;&lt;Self as Iterator&gt;::Item&gt; {
+        if self.begin &gt;= self.end {
+            return None;
+        }
+        let block_size_log2 = self.block_size_log2;
+        let block_size = 1usize &lt;&lt; self.block_size_log2;
+        let block = self.begin / block_size;
+        let begin = self.begin % block_size;
+		// 只有最后一块需要计算块内最后的地址，其他的直接返回块的大小
+        let end = if block == self.end / block_size {
+            self.end % block_size
+        } else {
+            block_size
+        };
+        self.begin += end - begin;
+        Some(BlockRange {
+            block,
+            begin,
+            end,
+            block_size_log2,
+        })
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <h2 id="实现按页分配的-vmo"><a class="header" href="#实现按页分配的-vmo">实现按页分配的 VMO</a></h2>
 <blockquote>
 <p>实现 for_each_page, commit, read, write 函数</p>
 </blockquote>
+<p>按页分配的 VMO 结构体如下：</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct VMObjectPaged {
+    inner: Mutex&lt;VMObjectPagedInner&gt;,
+}
+
+/// The mutable part of `VMObjectPaged`.
+#[derive(Default)]
+struct VMObjectPagedInner {
+    /// Physical frames of this VMO.
+    frames: Vec&lt;PhysFrame&gt;,
+    /// Cache Policy
+    cache_policy: CachePolicy,
+    /// Is contiguous
+    contiguous: bool,
+    /// Sum of pin_count
+    pin_count: usize,
+    /// All mappings to this VMO.
+    mappings: Vec&lt;Weak&lt;VmMapping&gt;&gt;,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>VMObjectPage 有两个 new 方法</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VMObjectPaged {
+    /// Create a new VMO backing on physical memory allocated in pages.
+    pub fn new(pages: usize) -&gt; Arc&lt;Self&gt; {
+        let mut frames = Vec::new();
+        frames.resize_with(pages, || PhysFrame::alloc_zeroed().unwrap()); // 分配 pages 个页帧号，并将这些页帧号的内存清零
+        Arc::new(VMObjectPaged {
+            inner: Mutex::new(VMObjectPagedInner {
+                frames,
+                ..Default::default()
+            }),
+        })
+    }
+
+    /// Create a list of contiguous pages
+    pub fn new_contiguous(pages: usize, align_log2: usize) -&gt; ZxResult&lt;Arc&lt;Self&gt;&gt; {
+        let frames = PhysFrame::alloc_contiguous_zeroed(pages, align_log2 - PAGE_SIZE_LOG2);
+        if frames.is_empty() {
+            return Err(ZxError::NO_MEMORY);
+        }
+        Ok(Arc::new(VMObjectPaged {
+            inner: Mutex::new(VMObjectPagedInner {
+                frames,
+                contiguous: true,
+                ..Default::default()
+            }),
+        }))
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>VMObjectPaged 的读和写用到了一个非常重要的函数 for_each_page 。首先它先构造了一个 BlockIter 迭代器，然后调用传入的函数进行读或者写。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VMObjectPagedInner {
+		/// Helper function to split range into sub-ranges within pages.
+    ///
+    /// ```text
+    /// VMO range:
+    /// |----|----|----|----|----|
+    ///
+    /// buf:
+    ///            [====len====]
+    /// |--offset--|
+    ///
+    /// sub-ranges:
+    ///            [===]
+    ///                [====]
+    ///                     [==]
+    /// ```
+    ///
+    /// `f` is a function to process in-page ranges.
+    /// It takes 2 arguments:
+    /// * `paddr`: the start physical address of the in-page range.
+    /// * `buf_range`: the range in view of the input buffer.
+		fn for_each_page(
+        &amp;mut self,
+        offset: usize,
+        buf_len: usize,
+        mut f: impl FnMut(PhysAddr, Range&lt;usize&gt;),
+    ) {
+        let iter = BlockIter {
+            begin: offset,
+            end: offset + buf_len,
+            block_size_log2: 12,
+        };
+        for block in iter {
+						// 获取这一块开始的物理地址
+            let paddr = self.frames[block.block].addr();
+						// 这块物理地址的范围
+            let buf_range = block.origin_begin() - offset..block.origin_end() - offset;
+            f(paddr + block.begin, buf_range);
+        }  
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>read 和 write 函数，一个传入的是 <code>kernel_hal::pmem_read</code> ，另外一个是 <code>kernel_hal::pmem_write</code></p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VMObjectTrait for VMObjectPaged {
+    fn read(&amp;self, offset: usize, buf: &amp;mut [u8]) -&gt; ZxResult {
+        let mut inner = self.inner.lock();
+        if inner.cache_policy != CachePolicy::Cached {
+            return Err(ZxError::BAD_STATE);
+        }
+        inner.for_each_page(offset, buf.len(), |paddr, buf_range| {
+            kernel_hal::pmem_read(paddr, &amp;mut buf[buf_range]);
+        });
+        Ok(())
+    }
+
+    fn write(&amp;self, offset: usize, buf: &amp;[u8]) -&gt; ZxResult {
+        let mut inner = self.inner.lock();
+        if inner.cache_policy != CachePolicy::Cached {
+            return Err(ZxError::BAD_STATE);
+        }
+        inner.for_each_page(offset, buf.len(), |paddr, buf_range| {
+            kernel_hal::pmem_write(paddr, &amp;buf[buf_range]);
+        });
+        Ok(())
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>commit 函数</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VMObjectTrait for VMObjectPaged {
+		fn commit_page(&amp;self, page_idx: usize, _flags: MMUFlags) -&gt; ZxResult&lt;PhysAddr&gt; {
+        let inner = self.inner.lock();
+        Ok(inner.frames[page_idx].addr())
+    }
+
+    fn commit_pages_with(
+        &amp;self,
+        f: &amp;mut dyn FnMut(&amp;mut dyn FnMut(usize, MMUFlags) -&gt; ZxResult&lt;PhysAddr&gt;) -&gt; ZxResult,
+    ) -&gt; ZxResult {
+        let inner = self.inner.lock();
+        f(&amp;mut |page_idx, _| Ok(inner.frames[page_idx].addr()))
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <h2 id="vmo-复制"><a class="header" href="#vmo-复制">VMO 复制</a></h2>
 <blockquote>
 <p>实现 create_child 函数</p>
 </blockquote>
+<p>create_child 是将原 VMObjectPaged 的内容拷贝一份</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// object/vm/vmo/paged.rs
+
+impl VMObjectTrait for VMObjectPaged {
+		fn create_child(&amp;self, offset: usize, len: usize) -&gt; ZxResult&lt;Arc&lt;dyn VMObjectTrait&gt;&gt; {
+        assert!(page_aligned(offset));
+        assert!(page_aligned(len));
+        let mut inner = self.inner.lock();
+        let child = inner.create_child(offset, len)?;
+        Ok(child)
+    }
+
+		/// Create a snapshot child VMO.
+    fn create_child(&amp;mut self, offset: usize, len: usize) -&gt; ZxResult&lt;Arc&lt;VMObjectPaged&gt;&gt; {
+        // clone contiguous vmo is no longer permitted
+        // https://fuchsia.googlesource.com/fuchsia/+/e6b4c6751bbdc9ed2795e81b8211ea294f139a45
+        if self.contiguous {
+            return Err(ZxError::INVALID_ARGS);
+        }
+        if self.cache_policy != CachePolicy::Cached || self.pin_count != 0 {
+            return Err(ZxError::BAD_STATE);
+        }
+        let mut frames = Vec::with_capacity(pages(len));
+        for _ in 0..pages(len) {
+            frames.push(PhysFrame::alloc().ok_or(ZxError::NO_MEMORY)?);
+        }
+        for (i, frame) in frames.iter().enumerate() {
+            if let Some(src_frame) = self.frames.get(pages(offset) + i) {
+                kernel_hal::frame_copy(src_frame.addr(), frame.addr())
+            } else {
+                kernel_hal::pmem_zero(frame.addr(), PAGE_SIZE);
+            }
+        }
+        // create child VMO
+        let child = Arc::new(VMObjectPaged {
+            inner: Mutex::new(VMObjectPagedInner {
+                frames,
+                ..Default::default()
+            }),
+        });
+        Ok(child)
+    }
+}
+
+// kernel-hal-unix/sr/lib.rs
+
+/// Copy content of `src` frame to `target` frame
+#[export_name = &quot;hal_frame_copy&quot;]
+pub fn frame_copy(src: PhysAddr, target: PhysAddr) {
+    trace!(&quot;frame_copy: {:#x} &lt;- {:#x}&quot;, target, src);
+    assert!(src + PAGE_SIZE &lt;= PMEM_SIZE &amp;&amp; target + PAGE_SIZE &lt;= PMEM_SIZE);
+    ensure_mmap_pmem();
+    unsafe {
+        let buf = phys_to_virt(src) as *const u8;
+        buf.copy_to_nonoverlapping(phys_to_virt(target) as _, PAGE_SIZE);
+    }
+}
+
+/// Zero physical memory at `[paddr, paddr + len)`
+#[export_name = &quot;hal_pmem_zero&quot;]
+pub fn pmem_zero(paddr: PhysAddr, len: usize) {
+    trace!(&quot;pmem_zero: addr={:#x}, len={:#x}&quot;, paddr, len);
+    assert!(paddr + len &lt;= PMEM_SIZE);
+    ensure_mmap_pmem();
+    unsafe {
+        core::ptr::write_bytes(phys_to_virt(paddr) as *mut u8, 0, len);
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="虚拟内存vmar-对象"><a class="header" href="#虚拟内存vmar-对象">虚拟内存：VMAR 对象</a></h1>
 <h2 id="vmar-简介"><a class="header" href="#vmar-简介">VMAR 简介</a></h2>
 <p>虚拟内存地址区域（Virtual Memory Address Regions ，VMARs）为管理进程的地址空间提供了一种抽象。在进程创建时，将Root VMAR 的句柄提供给进程创建者。该句柄指的是跨越整个地址空间的 VMAR。这个空间可以通过<a href="https://fuchsia.dev/docs/reference/syscalls/vmar_map"><code>zx_vmar_map()</code></a>和 <a href="https://fuchsia.dev/docs/reference/syscalls/vmar_allocate"><code>zx_vmar_allocate()</code></a>接口来划分 。 <a href="https://fuchsia.dev/docs/reference/syscalls/vmar_allocate"><code>zx_vmar_allocate()</code></a>可用于生成新的 VMAR（称为子区域或子区域），可用于将地址空间的各个部分组合在一起。</p>
@@ -1012,14 +1801,290 @@ impl Process {
 <p>定义 VmAddressRange，VmMapping</p>
 <p>实现 create_child, map, unmap, destroy 函数，并做单元测试验证地址空间分配</p>
 </blockquote>
+<h3 id="vmaddressregion"><a class="header" href="#vmaddressregion">VmAddressRegion</a></h3>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct VmAddressRegion {
+    flags: VmarFlags,
+    base: KObjectBase,
+    addr: VirtAddr,
+    size: usize,
+    parent: Option&lt;Arc&lt;VmAddressRegion&gt;&gt;,
+    page_table: Arc&lt;Mutex&lt;dyn PageTableTrait&gt;&gt;,
+    /// If inner is None, this region is destroyed, all operations are invalid.
+    inner: Mutex&lt;Option&lt;VmarInner&gt;&gt;,
+}
+
+#[derive(Default)]
+struct VmarInner {
+    children: Vec&lt;Arc&lt;VmAddressRegion&gt;&gt;,
+    mappings: Vec&lt;Arc&lt;VmMapping&gt;&gt;,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>构造一个根节点 VMAR，这个 VMAR 是每个进程都拥有的。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VmAddressRegion {
+    /// Create a new root VMAR.
+    pub fn new_root() -&gt; Arc&lt;Self&gt; {
+        let (addr, size) = {
+            use core::sync::atomic::*;
+            static VMAR_ID: AtomicUsize = AtomicUsize::new(0);
+            let i = VMAR_ID.fetch_add(1, Ordering::SeqCst);
+            (0x2_0000_0000 + 0x100_0000_0000 * i, 0x100_0000_0000)
+        };
+        Arc::new(VmAddressRegion {
+            flags: VmarFlags::ROOT_FLAGS,
+            base: KObjectBase::new(),
+            addr,
+            size,
+            parent: None,
+            page_table: Arc::new(Mutex::new(kernel_hal::PageTable::new())), //hal PageTable
+            inner: Mutex::new(Some(VmarInner::default())),
+        })
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>我们的内核同样需要一个根 VMAR</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// The base of kernel address space
+/// In x86 fuchsia this is 0xffff_ff80_0000_0000 instead
+pub const KERNEL_ASPACE_BASE: u64 = 0xffff_ff02_0000_0000;
+/// The size of kernel address space
+pub const KERNEL_ASPACE_SIZE: u64 = 0x0000_0080_0000_0000;
+/// The base of user address space
+pub const USER_ASPACE_BASE: u64 = 0;
+// pub const USER_ASPACE_BASE: u64 = 0x0000_0000_0100_0000;
+/// The size of user address space
+pub const USER_ASPACE_SIZE: u64 = (1u64 &lt;&lt; 47) - 4096 - USER_ASPACE_BASE;
+
+impl VmAddressRegion {
+		/// Create a kernel root VMAR.
+    pub fn new_kernel() -&gt; Arc&lt;Self&gt; {
+        let kernel_vmar_base = KERNEL_ASPACE_BASE as usize;
+        let kernel_vmar_size = KERNEL_ASPACE_SIZE as usize;
+        Arc::new(VmAddressRegion {
+            flags: VmarFlags::ROOT_FLAGS,
+            base: KObjectBase::new(),
+            addr: kernel_vmar_base,
+            size: kernel_vmar_size,
+            parent: None,
+            page_table: Arc::new(Mutex::new(kernel_hal::PageTable::new())),
+            inner: Mutex::new(Some(VmarInner::default())),
+        })
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="vmaddressmapping"><a class="header" href="#vmaddressmapping">VmAddressMapping</a></h3>
+<p>VmAddressMapping 用于建立 VMO 和 VMAR 之间的映射。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Virtual Memory Mapping
+pub struct VmMapping {
+    /// The permission limitation of the vmar
+    permissions: MMUFlags,
+    vmo: Arc&lt;VmObject&gt;,
+    page_table: Arc&lt;Mutex&lt;dyn PageTableTrait&gt;&gt;,
+    inner: Mutex&lt;VmMappingInner&gt;,
+}
+
+#[derive(Debug, Clone)]
+struct VmMappingInner {
+    /// The actual flags used in the mapping of each page
+    flags: Vec&lt;MMUFlags&gt;,
+    addr: VirtAddr,
+    size: usize,
+    vmo_offset: usize,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>map 和 unmap 实现内存映射和解映射</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VmMapping {
+	/// Map range and commit.
+    /// Commit pages to vmo, and map those to frames in page_table.
+    /// Temporarily used for development. A standard procedure for
+    /// vmo is: create_vmo, op_range(commit), map
+    fn map(self: &amp;Arc&lt;Self&gt;) -&gt; ZxResult {
+        self.vmo.commit_pages_with(&amp;mut |commit| {
+            let inner = self.inner.lock();
+            let mut page_table = self.page_table.lock();
+            let page_num = inner.size / PAGE_SIZE;
+            let vmo_offset = inner.vmo_offset / PAGE_SIZE;
+            for i in 0..page_num {
+                let paddr = commit(vmo_offset + i, inner.flags[i])?;
+                //通过 PageTableTrait 的 hal_pt_map 进行页表映射
+                //调用 kernel-hal的方法进行映射
+            }
+            Ok(())
+        })
+    }
+
+    fn unmap(&amp;self) {
+        let inner = self.inner.lock();
+        let pages = inner.size / PAGE_SIZE;
+        // TODO inner.vmo_offset unused?
+        // 调用 kernel-hal的方法进行解映射
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <h2 id="hal用-mmap-模拟页表"><a class="header" href="#hal用-mmap-模拟页表">HAL：用 mmap 模拟页表</a></h2>
 <blockquote>
 <p>实现页表接口 map, unmap, protect</p>
 </blockquote>
+<p>在 kernel-hal 中定义了一个页表和这个页表具有的方法。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Page Table
+#[repr(C)]
+pub struct PageTable {
+    table_phys: PhysAddr,
+}
+
+impl PageTable {
+    /// Get current page table
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_pt_current&quot;]
+    pub fn current() -&gt; Self {
+        unimplemented!()
+    }
+
+    /// Create a new `PageTable`.
+    #[allow(clippy::new_without_default)]
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_pt_new&quot;]
+    pub fn new() -&gt; Self {
+        unimplemented!()
+    }
+}
+
+impl PageTableTrait for PageTable {
+    /// Map the page of `vaddr` to the frame of `paddr` with `flags`.
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_pt_map&quot;]
+    fn map(&amp;mut self, _vaddr: VirtAddr, _paddr: PhysAddr, _flags: MMUFlags) -&gt; Result&lt;()&gt; {
+        unimplemented!()
+    }
+    /// Unmap the page of `vaddr`.
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_pt_unmap&quot;]
+    fn unmap(&amp;mut self, _vaddr: VirtAddr) -&gt; Result&lt;()&gt; {
+        unimplemented!()
+    }
+    /// Change the `flags` of the page of `vaddr`.
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_pt_protect&quot;]
+    fn protect(&amp;mut self, _vaddr: VirtAddr, _flags: MMUFlags) -&gt; Result&lt;()&gt; {
+        unimplemented!()
+    }
+    /// Query the physical address which the page of `vaddr` maps to.
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_pt_query&quot;]
+    fn query(&amp;mut self, _vaddr: VirtAddr) -&gt; Result&lt;PhysAddr&gt; {
+        unimplemented!()
+    }
+    /// Get the physical address of root page table.
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_pt_table_phys&quot;]
+    fn table_phys(&amp;self) -&gt; PhysAddr {
+        self.table_phys
+    }
+
+    /// Activate this page table
+    #[cfg(target_arch = &quot;riscv64&quot;)]
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_pt_activate&quot;]
+    fn activate(&amp;self) {
+        unimplemented!()
+    }
+
+    #[linkage = &quot;weak&quot;]
+    #[export_name = &quot;hal_pt_unmap_cont&quot;]
+    fn unmap_cont(&amp;mut self, vaddr: VirtAddr, pages: usize) -&gt; Result&lt;()&gt; {
+        for i in 0..pages {
+            self.unmap(vaddr + i * PAGE_SIZE)?;
+        }
+        Ok(())
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>在 kernel-hal-unix 中实现了 PageTableTrait，在 map 中调用了 mmap。</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl PageTableTrait for PageTable {
+    /// Map the page of `vaddr` to the frame of `paddr` with `flags`.
+    #[export_name = &quot;hal_pt_map&quot;]
+    fn map(&amp;mut self, vaddr: VirtAddr, paddr: PhysAddr, flags: MMUFlags) -&gt; Result&lt;()&gt; {
+        debug_assert!(page_aligned(vaddr));
+        debug_assert!(page_aligned(paddr));
+        let prot = flags.to_mmap_prot();
+        mmap(FRAME_FILE.as_raw_fd(), paddr, PAGE_SIZE, vaddr, prot);
+        Ok(())
+    }
+
+    /// Unmap the page of `vaddr`.
+    #[export_name = &quot;hal_pt_unmap&quot;]
+    fn unmap(&amp;mut self, vaddr: VirtAddr) -&gt; Result&lt;()&gt; {
+        self.unmap_cont(vaddr, 1)
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <h2 id="实现内存映射"><a class="header" href="#实现内存映射">实现内存映射</a></h2>
 <blockquote>
 <p>用 HAL 实现上面 VMAR 留空的部分，并做单元测试验证内存映射</p>
 </blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VmMapping {
+	/// Map range and commit.
+    /// Commit pages to vmo, and map those to frames in page_table.
+    /// Temporarily used for development. A standard procedure for
+    /// vmo is: create_vmo, op_range(commit), map
+    fn map(self: &amp;Arc&lt;Self&gt;) -&gt; ZxResult {
+        self.vmo.commit_pages_with(&amp;mut |commit| {
+            let inner = self.inner.lock();
+            let mut page_table = self.page_table.lock();
+            let page_num = inner.size / PAGE_SIZE;
+            let vmo_offset = inner.vmo_offset / PAGE_SIZE;
+            for i in 0..page_num {
+                let paddr = commit(vmo_offset + i, inner.flags[i])?;
+                //通过 PageTableTrait 的 hal_pt_map 进行页表映射
+                page_table
+                    .map(inner.addr + i * PAGE_SIZE, paddr, inner.flags[i])
+                    .expect(&quot;failed to map&quot;);
+            }
+            Ok(())
+        })
+    }
+
+    fn unmap(&amp;self) {
+        let inner = self.inner.lock();
+        let pages = inner.size / PAGE_SIZE;
+        // TODO inner.vmo_offset unused?
+        self.page_table
+            .lock()
+            .unmap_cont(inner.addr, pages)
+            .expect(&quot;failed to unmap&quot;)
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="用户程序"><a class="header" href="#用户程序">用户程序</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="zircon-用户程序"><a class="header" href="#zircon-用户程序">Zircon 用户程序</a></h1>
 <h2 id="用户态启动流程"><a class="header" href="#用户态启动流程">用户态启动流程</a></h2>
