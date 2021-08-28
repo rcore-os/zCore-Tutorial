@@ -146,19 +146,260 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="系统调用"><a class="header" href="#系统调用">系统调用</a></h1>
+                        <h1 id="zircon-系统调用"><a class="header" href="#zircon-系统调用">Zircon 系统调用</a></h1>
+<blockquote>
+<p>目录位于<code>zCore/zircon-syscall</code></p>
+</blockquote>
+<p>从userboot运行起来到实现调用syscall的简要函数调用流程如下：</p>
+<ol>
+<li>run_userboot    -&gt;</li>
+<li>proc.start      -&gt;</li>
+<li>thread_fn       -&gt;</li>
+<li>new_thread      -&gt; </li>
+<li>handle_syscall  -&gt; </li>
+<li>syscall         -&gt;</li>
+<li>sys_handle_close()   (举例某一具体的syscall运行，该syscall可用于实现<code>close a handle</code>的功能)</li>
+</ol>
 <h2 id="获取系统调用参数"><a class="header" href="#获取系统调用参数">获取系统调用参数</a></h2>
-<blockquote>
 <p>从寄存器中获取参数</p>
+<blockquote>
+<p>不同的计算机体系结构获得参数的方式不同</p>
+<p>以下区分<code>x86_64</code>以及<code>aarch64</code></p>
 </blockquote>
+<p>调用syscall需要从寄存器收集两种参数：<br />
++ <code>num</code> : 系统调用号<br />
++ <code>args</code> : 具体某一系统调用的参数</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>async fn handle_syscall(thread: &amp;CurrentThread, regs: &amp;mut GeneralRegs) {
+    #[cfg(target_arch = &quot;x86_64&quot;)]
+    let num = regs.rax as u32;
+    #[cfg(target_arch = &quot;aarch64&quot;)]
+    let num = regs.x16 as u32;
+    // LibOS: Function call ABI
+    #[cfg(feature = &quot;std&quot;)]
+    #[cfg(target_arch = &quot;x86_64&quot;)]
+    let args = unsafe {
+        let a6 = (regs.rsp as *const usize).read();
+        let a7 = (regs.rsp as *const usize).add(1).read();
+        [
+            regs.rdi, regs.rsi, regs.rdx, regs.rcx, regs.r8, regs.r9, a6, a7,
+        ]
+    };
+    // RealOS: Zircon syscall ABI
+    #[cfg(not(feature = &quot;std&quot;))]
+    #[cfg(target_arch = &quot;x86_64&quot;)]
+    let args = [
+        regs.rdi, regs.rsi, regs.rdx, regs.r10, regs.r8, regs.r9, regs.r12, regs.r13,
+    ];
+    // ARM64
+    #[cfg(target_arch = &quot;aarch64&quot;)]
+    let args = [
+        regs.x0, regs.x1, regs.x2, regs.x3, regs.x4, regs.x5, regs.x6, regs.x7,
+    ];
+    let mut syscall = Syscall {
+        regs,
+        thread,
+        thread_fn,
+    };
+    let ret = syscall.syscall(num, args).await as usize;
+    #[cfg(target_arch = &quot;x86_64&quot;)]
+    {
+        syscall.regs.rax = ret;
+    }
+    #[cfg(target_arch = &quot;aarch64&quot;)]
+    {
+        syscall.regs.x0 = ret;
+    }
+}
+
+<span class="boring">}
+</span></code></pre></pre>
 <h2 id="系统调用上下文与处理函数"><a class="header" href="#系统调用上下文与处理函数">系统调用上下文与处理函数</a></h2>
+<h3 id="定义-syscall-结构体"><a class="header" href="#定义-syscall-结构体">定义 Syscall 结构体</a></h3>
+<p>保存上下文信息</p>
 <blockquote>
-<p>定义 Syscall 结构体，实现 syscall 函数</p>
+<p>zCore/zircon-syscall/src/lib.rs#L52</p>
 </blockquote>
-<h2 id="实现第一个系统调用"><a class="header" href="#实现第一个系统调用">实现第一个系统调用</a></h2>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// 系统调用的结构(存储关于创建系统调用的信息)
+pub struct Syscall&lt;'a&gt; {
+    /// store the regs statues
+    pub regs: &amp;'a mut GeneralRegs,
+    /// the thread making a syscall
+    pub thread: &amp;'a CurrentThread,
+    /// new thread function
+    pub thread_fn: ThreadFn,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="实现-syscall-函数"><a class="header" href="#实现-syscall-函数">实现 syscall 函数</a></h3>
 <blockquote>
-<p>实现 sys_channel_read 和 sys_debuglog_write</p>
+<p>zCore/zircon-syscall/src/lib.rs#L59</p>
 </blockquote>
+<ol>
+<li>检查系统调用号<code>sys_type</code>是否合法</li>
+<li>获取传递给具体某一系统调用的参数<code>args</code></li>
+<li>若syscall函数输入的系统调用号合法，则进一步根据系统调用号匹配具体系统调用处理函数</li>
+<li>传入对应系统调用所需的参数，并运行之</li>
+<li>检查系统调用的返回值<code>ret</code>是否符合预期 </li>
+</ol>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    pub async fn syscall(&amp;mut self, num: u32, args: [usize; 8]) -&gt; isize {
+
+        ...
+
+        // 1. 检查系统调用号`sys_type`是否合法
+        let sys_type = match Sys::try_from(num) {
+            Ok(t) =&gt; t,
+            Err(_) =&gt; {
+                error!(&quot;invalid syscall number: {}&quot;, num);
+                return ZxError::INVALID_ARGS as _;
+            }
+        };
+
+        ...
+
+        // 2. 获取传递给具体系统调用参数
+        let [a0, a1, a2, a3, a4, a5, a6, a7] = args;
+
+        // 3. 若syscall函数输入的系统调用号合法
+        //    则进一步根据系统调用号匹配具体系统调用处理函数
+
+        let ret = match sys_type {
+            
+            // 4. 传入对应系统调用所需的参数，并运行之
+            Sys::HANDLE_CLOSE =&gt; self.sys_handle_close(a0 as _),
+            Sys::HANDLE_CLOSE_MANY =&gt; self.sys_handle_close_many(a0.into(), a1 as _),
+            Sys::HANDLE_DUPLICATE =&gt; self.sys_handle_duplicate(a0 as _, a1 as _, a2.into()),
+            Sys::HANDLE_REPLACE =&gt; self.sys_handle_replace(a0 as _, a1 as _, a2.into()),
+            
+            ...
+            // 更多系统调用匹配的分支
+            Sys::CLOCK_GET =&gt; self.sys_clock_get(a0 as _, a1.into()),
+            Sys::CLOCK_READ =&gt; self.sys_clock_read(a0 as _, a1.into()),
+            Sys::CLOCK_ADJUST =&gt; self.sys_clock_adjust(a0 as _, a1 as _, a2 as _),
+            Sys::CLOCK_UPDATE =&gt; self.sys_clock_update(a0 as _, a1 as _, a2.into()),
+            Sys::TIMER_CREATE =&gt; self.sys_timer_create(a0 as _, a1 as _, a2.into()),
+
+            ...
+        };
+
+        ...
+
+        // 5. 检查系统调用的返回值`ret`是否符合预期
+        match ret {
+            Ok(_) =&gt; 0,
+            Err(err) =&gt; err as isize,
+        }
+    }
+<span class="boring">}
+</span></code></pre></pre>
+<p>系统调用号匹配信息位于</p>
+<blockquote>
+<p>zCore/zircon-syscall/src/consts.rs#L8</p>
+</blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum SyscallType {
+    BTI_CREATE = 0,
+    BTI_PIN = 1,
+    BTI_RELEASE_QUARANTINE = 2,
+    CHANNEL_CREATE = 3,
+    CHANNEL_READ = 4,
+    CHANNEL_READ_ETC = 5,
+    CHANNEL_WRITE = 6,
+    CHANNEL_WRITE_ETC = 7,
+    CHANNEL_CALL_NORETRY = 8,
+    CHANNEL_CALL_FINISH = 9,
+    CLOCK_GET = 10,
+    CLOCK_ADJUST = 11,
+    CLOCK_GET_MONOTONIC_VIA_KERNEL = 12,
+
+    ...
+
+    VMO_CREATE_CONTIGUOUS = 165,
+    VMO_CREATE_PHYSICAL = 166,
+    COUNT = 167,
+    FUTEX_WAKE_HANDLE_CLOSE_THREAD_EXIT = 200,
+    VMAR_UNMAP_HANDLE_CLOSE_THREAD_EXIT = 201,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="简单实现一个系统调用处理函数sys_clock_adjust为例"><a class="header" href="#简单实现一个系统调用处理函数sys_clock_adjust为例">简单实现一个系统调用处理函数（<code>sys_clock_adjust</code>为例）</a></h3>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    pub fn sys_clock_adjust(&amp;self, resource: HandleValue, clock_id: u32, offset: u64) -&gt; ZxResult {
+
+    // 1. 记录log信息：info!()
+        info!(
+            &quot;clock.adjust: resource={:#x?}, id={:#x}, offset={:#x}&quot;,
+            resource, clock_id, offset
+        );
+
+    // 2. 检查参数合法性（需要归纳出每个系统调用的参数值的范围）
+    // missing now
+
+    // 3. 获取当前进程对象
+        let proc = self.thread.proc();
+
+    // 4. 根据句柄从进程中获取对象
+        proc.get_object::&lt;Resource&gt;(resource)?
+            .validate(ResourceKind::ROOT)?;
+        match clock_id {
+            ZX_CLOCK_MONOTONIC =&gt; Err(ZxError::ACCESS_DENIED),
+
+    // 5. 调用内河对象API执行具体功能
+            ZX_CLOCK_UTC =&gt; {
+                UTC_OFFSET.store(offset, Ordering::Relaxed);
+                Ok(())
+            }
+            _ =&gt; Err(ZxError::INVALID_ARGS),
+        }
+    }
+<span class="boring">}
+</span></code></pre></pre>
+<blockquote>
+<p>一个现有不完全的系统调用实现<code>sys_clock_get</code></p>
+</blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    /// Acquire the current time.  
+    ///   
+    /// + Returns the current time of clock_id via `time`.  
+    /// + Returns whether `clock_id` was valid.  
+    pub fn sys_clock_get(&amp;self, clock_id: u32, mut time: UserOutPtr&lt;u64&gt;) -&gt; ZxResult {
+        // 记录log信息：info!()
+        info!(&quot;clock.get: id={}&quot;, clock_id); 
+        // 检查参数合法性
+        // miss
+
+        match clock_id {
+            ZX_CLOCK_MONOTONIC =&gt; {
+                time.write(timer_now().as_nanos() as u64)?;
+                Ok(())
+            }
+            ZX_CLOCK_UTC =&gt; {
+                time.write(timer_now().as_nanos() as u64 + UTC_OFFSET.load(Ordering::Relaxed))?;
+                Ok(())
+            }
+            ZX_CLOCK_THREAD =&gt; {
+                time.write(self.thread.get_time())?;
+                Ok(())
+            }
+            _ =&gt; Err(ZxError::NOT_SUPPORTED),
+        }
+    }
+<span class="boring">}
+</span></code></pre></pre>
 
                     </main>
 

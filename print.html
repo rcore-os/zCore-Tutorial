@@ -2286,12 +2286,238 @@ impl PageTableTrait for PageTable {
 <span class="boring">}
 </span></code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="用户程序"><a class="header" href="#用户程序">用户程序</a></h1>
+<p>zCore采用的是微内核的设计风格。微内核设计的一个复杂问题是”如何引导初始用户空间进程“。通常这是通过让内核实现最小版本的文件系统读取和程序加载来实现的引导。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="zircon-用户程序"><a class="header" href="#zircon-用户程序">Zircon 用户程序</a></h1>
 <h2 id="用户态启动流程"><a class="header" href="#用户态启动流程">用户态启动流程</a></h2>
+<h3 id="流程概要"><a class="header" href="#流程概要">流程概要</a></h3>
+<p>kernel<br />
+-&gt; userboot  (decompress bootsvc LZ4 format)<br />
+-&gt; bootsvc   (可执行文件bin/component_manager)<br />
+-&gt; component_manager<br />
+-&gt; sh / device_manager</p>
+<h3 id="zbizircon-boot-image"><a class="header" href="#zbizircon-boot-image">ZBI(Zircon Boot Image)</a></h3>
+<p>ZBI是一种简单的容器格式，它内嵌了许多可由引导加载程序 <code>BootLoader</code>传递的项目内容，包括硬件特定的信息、提供引导选项的内核“命令行”以及RAM磁盘映像(通常是被压缩的)。<code>ZBI</code>中包含了初始文件系统 <code>bootfs</code>，内核将 <code>ZBI</code> 完整传递给 <code>userboot</code>，由它负责解析并对其它进程提供文件服务。</p>
+<h3 id="bootfs"><a class="header" href="#bootfs">bootfs</a></h3>
+<p>基本的<code>bootfs</code>映像可满足用户空间程序运行需要的所有依赖:
++ 可执行文件
++ 共享库
++ 数据文件</p>
+<p>以上列出的内容还可实现设备驱动或更高级的文件系统，从而能够从存储设备或网络设备上访问读取更多的代码和数据。</p>
+<p>在系统自引导结束后，<code>bootfs</code>中的文件就会成为一个挂载在根目录<code>/boot</code>上的只读文件系统树(并由bootsvc提供服务)。随后<code>userboot</code>将从<code>bootfs</code>加载第一个真正意义上的用户程序。</p>
+<h3 id="a-hrefhttpsfuchsiadevfuchsia-srcconceptsbootingprogram_loadingzcore程序elf加载与动态链接a"><a class="header" href="#a-hrefhttpsfuchsiadevfuchsia-srcconceptsbootingprogram_loadingzcore程序elf加载与动态链接a"><a href="https://fuchsia.dev/fuchsia-src/concepts/booting/program_loading">zCore程序(ELF加载与动态链接)</a></a></h3>
+<p>zCore内核不直接参与正常程序的加载，而是提供了一些用户态程序加载时可用的模块。如虚拟内存对象(VMO)、进程(processes)、虚拟地址空间（VMAR）和线程(threads)。 </p>
+<h3 id="elf-格式以及系统应用程序二进制接口system-abi"><a class="header" href="#elf-格式以及系统应用程序二进制接口system-abi">ELF 格式以及系统应用程序二进制接口(system ABI)</a></h3>
+<p>标准的zCore用户空间环境提供了动态链接器以及基于ELF的执行环境，能够运行ELF格式的格式机器码可执行文件。zCore进程只能通过zCore vDSO使用系统调用。内核采用基于ELF系统常见的程序二进制接口(ABI)提供了vDSO。</p>
+<p>具备适当功能的用户空间代码可通过系统调用直接创建进程和加载程序，而不用ELF。但是zCore的标准ABI使用了这里所述的ELF。有关ELF文件格式的背景知识如下： </p>
+<h3 id="elf文件类型"><a class="header" href="#elf文件类型">ELF文件类型</a></h3>
+<p>“ET_REL”代表此ELF文件为可重定位文件</p>
+<p>“ET_EXEC“代表ELF文件为可执行文件</p>
+<p>“ET_DYN”代表此ELF文件为动态链接库</p>
+<p>“ET_CORE”代表此ELF文件是核心转储文件</p>
+<h3 id="传统elf程序文件加载"><a class="header" href="#传统elf程序文件加载">传统ELF程序文件加载</a></h3>
+<p>可执行链接格式(Executable and Linking Format, ELF)最初由 UNIX 系统实验室开发并发布，并成为大多数类Unix系统的通用标准可执行文件格式。在这些系统中，内核使用<code>POSIX</code>(可移植操作系统接口)<code>execve API</code>将程序加载与文件系统访问集成在一起。该类系统加载ELF程序的方式会有一些不同，但大多遵循以下模式:</p>
+<ol>
+<li>
+<p>内核按照名称加载文件，并检查它是ELF还是系统支持的其他类型的文件。</p>
+</li>
+<li>
+<p>内核根据ELF文件的<code>PT_LOAD</code>程序头来映射ELF映像。对于<code>ET_EXEC</code>文件，系统会将程序中的各段(Section)放到<code>p_vaddr</code>中所指定内存中的固定地址。对于<code>ET_DYN</code>文件，系统将加载程序第一个<code>PT_LOAD</code>的基地址，然后根据它们的<code>p_vaddr</code>相对于第一个section的<code>p_vaddr</code>放置后面的section。 通常来说该基地址是通过地址随机化(ASLR)来产生的。</p>
+</li>
+<li>
+<p>若ELF文件中有一个<code>PT_INTERP</code>(Program interpreter)程序头,  它的部分内容(ELF文件中<code>p_offset</code>和<code>p_filesz</code>给出的一些字节)被当做为一个文件名，改文件名用于寻找另一个称为“ELF解释器”的ELF文件。上述这种ELF文件是<code>ET_DYN</code>文件。内核采用同样的方式将该类ELF文件加载，但是所加载的地址是自定的。该ELF“解释器”通常指的是被命名为<code>/lib/ld.so.1</code> 或者是 <code>/lib/ld-linux.so.2</code>的ELF动态链接器。</p>
+</li>
+<li>
+<p>内核为初始的线程设置了寄存器和堆栈的内容，并在PC寄存器已指向特定程序入口处(Entry Point)的情况下启动线程。 </p>
+<ul>
+<li>程序入口处(Entry Point)指的是ELF文件头中 <code>e_entry</code>的值，它会根据程序基地址(base address)做相应的调整。如果这是一个带有<code>PT_INTERP</code>的ELF文件，则它的入口点不在它本身，而是被设置在动态链接器中。</li>
+<li>内核通过设置寄存器和堆栈来使得程序能够接收特定的参数，环境变量以及其它有实际用途的辅助向量。寄存器和堆栈的设置方法遵循了一种汇编级别的协议方式。若ELF文件运行时依赖动态链接，即带有<code>PT_INTERP</code>。则寄存器和堆栈中将包括来自该可执行文件的ELF文件头中的基地址、入口点和程序头部表地址信息，这些信息可允许动态链接器在内存中找到该可执行文件的ELF动态链接元数据，以实现动态链接。当动态链接启动完成后，动态链接器将跳转到该可执行文件的入口点地址。</li>
+</ul>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    pub fn sys_process_start(
+        &amp;self,
+        proc_handle: HandleValue,
+        thread_handle: HandleValue,
+        entry: usize,
+        stack: usize,
+        arg1_handle: HandleValue,
+        arg2: usize,
+    ) -&gt; ZxResult {
+        info!(&quot;process.start: proc_handle={:?}, thread_handle={:?}, entry={:?}, stack={:?}, arg1_handle={:?}, arg2={:?}&quot;,
+            proc_handle, thread_handle, entry, stack, arg1_handle, arg2
+        );
+        let proc = self.thread.proc();
+        let process = proc.get_object_with_rights::&lt;Process&gt;(proc_handle, Rights::WRITE)?;
+        let thread = proc.get_object_with_rights::&lt;Thread&gt;(thread_handle, Rights::WRITE)?;
+        if !Arc::ptr_eq(&amp;thread.proc(), &amp;process) {
+            return Err(ZxError::ACCESS_DENIED);
+        }
+        let arg1 = if arg1_handle != INVALID_HANDLE {
+            let arg1 = proc.remove_handle(arg1_handle)?;
+            if !arg1.rights.contains(Rights::TRANSFER) {
+                return Err(ZxError::ACCESS_DENIED);
+            }
+            Some(arg1)
+        } else {
+            None
+        };
+        process.start(&amp;thread, entry, stack, arg1, arg2, self.spawn_fn)?;
+        Ok(())
+    }
+<span class="boring">}
+</span></code></pre></pre>
+</li>
+</ol>
+<p>zCore的程序加载受到了传统方式的启发，但是有一些不同。在传统模式中，需要在加载动态链接器之前加载可执行文件的一个关键原因是，动态链接器随机化选择的基地址(base address)不能与<code>ET_EXEC</code>可执行文件使用的固定地址相交。zCore从根本上并不支持<code>ET_EXEC</code>格式ELF文件的固定地址程序加载，它只支持位置无关的可执行文件或<a href="https://patchwork.kernel.org/patch/9807325/">PIE</a>(<code>ET_DYN</code>格式的ELF文件)</p>
+<h3 id="vmarext-trait实现"><a class="header" href="#vmarext-trait实现">VmarExt trait实现</a></h3>
+<p>zCore底层的API不支持文件系统。zCore程序文件的加载通过虚拟内存对象(VMO)以及<code>channel</code>使用的进程间通信机制来完成。</p>
+<p>程序的加载基于如下一些前提：
++ 获得一个包含可执行文件的虚拟内存对象（VMO）的句柄。</p>
 <blockquote>
-<p>kernel -&gt; userboot -&gt; bootsvc -&gt; component_manager -&gt; sh / device_manager</p>
-<p>ZBI 与 bootfs：ZBI 中包含初始文件系统 bootfs，内核将 ZBI 完整传递给 userboot，由它负责解析并对其它进程提供文件服务</p>
+<p>zircon-object\src\util\elf_loader.rs</p>
 </blockquote>
+<pre><code class="language-shell">fn make_vmo(elf: &amp;ElfFile, ph: ProgramHeader) -&gt; ZxResult&lt;Arc&lt;VmObject&gt;&gt; {
+    assert_eq!(ph.get_type().unwrap(), Type::Load);
+    let page_offset = ph.virtual_addr() as usize % PAGE_SIZE;
+    let pages = pages(ph.mem_size() as usize + page_offset);
+    let vmo = VmObject::new_paged(pages);
+    let data = match ph.get_data(&amp;elf).unwrap() {
+        SegmentData::Undefined(data) =&gt; data,
+        _ =&gt; return Err(ZxError::INVALID_ARGS),
+    };
+    vmo.write(page_offset, data)?;
+    Ok(vmo)
+}
+</code></pre>
+<ul>
+<li>程序执行参数列表。</li>
+<li>程序执行环境变量列表。</li>
+<li>存在一个初始的句柄列表，每个句柄都有一个句柄信息项。</li>
+</ul>
+<h3 id="userboot"><a class="header" href="#userboot">USERBOOT</a></h3>
+<h4 id="使用userboot的原因"><a class="header" href="#使用userboot的原因">使用userboot的原因</a></h4>
+<p>在Zircon中，内嵌在ZBI中的<code>RAM磁盘映像</code>通常采用<a href="https://github.com/lz4/lz4">LZ4</a>格式压缩。解压后将继续得到<code>bootfs</code>格式的磁盘镜像。这是一种简单的只读文件系统格式，它只列出文件名。且对于每个文件，可分别列出它们在BOOTFS映像中的偏移量和大小(这两个值都必须是页面对齐的，并且限制在32位)。</p>
+<p>由于kernel中没有包含任何可用于解压缩<a href="https://github.com/lz4/lz4">LZ4</a>格式的代码，也没有任何用于解析BOOTFS格式的代码。所有这些工作都是由称为<code>userboot</code>的第一个用户空间进程完成的。</p>
+<blockquote>
+<p>zCore中未找到解压缩bootfs的相关实现，<br />
+但是能够在scripts/gen-prebuilt.sh中找到ZBI中确实有bootfs的内容<br />
+且现有的zCore实现中有关所载入的ZBI方式如下：</p>
+</blockquote>
+<blockquote>
+<p>zircon-loader/src/lib.rs</p>
+</blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    // zbi
+    let zbi_vmo = {
+        let vmo = VmObject::new_paged(images.zbi.as_ref().len() / PAGE_SIZE + 1);
+        vmo.write(0, images.zbi.as_ref()).unwrap();
+        vmo.set_name(&quot;zbi&quot;);
+        vmo
+    };
+<span class="boring">}
+</span></code></pre></pre>
+<h4 id="userboot是什么"><a class="header" href="#userboot是什么">userboot是什么</a></h4>
+<p>userboot是一个普通的用户空间进程。它只能像任何其他进程一样通过vDSO执行标准的系统调用，并受完整vDSO执行制度的约束。</p>
+<blockquote>
+<p>唯一一个由内核态“不规范地”创建的用户进程</p>
+<p>userboot具体实现的功能有：</p>
+<ul>
+<li>
+<p>读取channel中的cmdline、handles </p>
+</li>
+<li>
+<p>解析zbi</p>
+</li>
+<li>
+<p>解压BOOTFS </p>
+</li>
+<li>
+<p>选定下一个程序启动 自己充当loader，然后“死亡”</p>
+</li>
+<li>
+<p>用“规范的方式”启动下一个程序</p>
+</li>
+</ul>
+</blockquote>
+<p>userboot被构建为一个ELF动态共享对象(DSO,dynamic shared object)，使用了与vDSO相同的布局。与vDSO一样，userboot的ELF映像在编译时就被嵌入到内核中。其简单的布局意味着加载它不需要内核在引导时解析ELF的文件头。内核只需要知道三件事:</p>
+<ol>
+<li>只读段<code>segment</code>的大小</li>
+<li>可执行段<code>segment</code>的大小</li>
+<li><code>userboot</code>入口点的地址。</li>
+</ol>
+<p>这些值在编译时便可从userboot ELF映像中提取，并在内核代码中用作常量。</p>
+<h4 id="kernel如何启用userboot"><a class="header" href="#kernel如何启用userboot">kernel如何启用userboot</a></h4>
+<p>与任何其他进程一样，userboot必须从已经映射到其地址空间的vDSO开始，这样它才能进行系统调用。内核将userboot和vDSO映射到第一个用户进程，然后在userboot的入口处启动它。</p>
+<!-- > !  userboot的特殊之处在于它的加载方式。   
+> ...todo -->
+<h4 id="userboot如何在vdso中取得系统调用"><a class="header" href="#userboot如何在vdso中取得系统调用">userboot如何在vDSO中取得系统调用</a></h4>
+<p>当内核将<code>userboot</code>映射到第一个用户进程时，会像正常程序那样，在内存中选择一个随机地址进行加载。而在映射<code>userboot</code>的vDSO时，并不采用上述随机的方式，而是将vDSO映像直接放在内存中<code>userboot</code>的映像之后。这样一来，vDSO代码与<code>userboot</code>的偏移量总是固定的。</p>
+<p>在编译阶段中，系统调用的入口点符号表会从vDSO ELF映像中提取出来，随后写入到链接脚本的符号定义中。利用每个符号在vDSO映像中相对固定的偏移地址，可在链接脚本提供的<code>_end</code>符号的固定偏移量处，定义该符号。通过这种方式，userboot代码可以直接调用到放在内存中，其映像本身之后的，每个确切位置上的vDSO入口点。</p>
+<p>相关代码:</p>
+<blockquote>
+<p>zircon-loader/src/lib.rs</p>
+</blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn run_userboot(images: &amp;Images&lt;impl AsRef&lt;[u8]&gt;&gt;, cmdline: &amp;str) -&gt; Arc&lt;Process&gt; {
+    ...
+    // vdso
+    let vdso_vmo = {
+        let elf = ElfFile::new(images.vdso.as_ref()).unwrap();
+        let vdso_vmo = VmObject::new_paged(images.vdso.as_ref().len() / PAGE_SIZE + 1);
+        vdso_vmo.write(0, images.vdso.as_ref()).unwrap();
+        let size = elf.load_segment_size();
+        let vmar = vmar
+            .allocate_at(
+                userboot_size,
+                size,
+                VmarFlags::CAN_MAP_RXW | VmarFlags::SPECIFIC,
+                PAGE_SIZE,
+            )
+            .unwrap();
+        vmar.map_from_elf(&amp;elf, vdso_vmo.clone()).unwrap();
+        #[cfg(feature = &quot;std&quot;)]
+        {
+            let offset = elf
+                .get_symbol_address(&quot;zcore_syscall_entry&quot;)
+                .expect(&quot;failed to locate syscall entry&quot;) as usize;
+            let syscall_entry = &amp;(kernel_hal_unix::syscall_entry as usize).to_ne_bytes();
+            // fill syscall entry x3
+            vdso_vmo.write(offset, syscall_entry).unwrap();
+            vdso_vmo.write(offset + 8, syscall_entry).unwrap();
+            vdso_vmo.write(offset + 16, syscall_entry).unwrap();
+        }
+        vdso_vmo
+    };
+    ...
+
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="bootsvc"><a class="header" href="#bootsvc">bootsvc</a></h3>
+<p>bootsvc 通常是usermode加载的第一个程序（与userboot不同，userboot是由内核加载的）。bootsvc提供了几种系统服务：</p>
+<ul>
+<li>
+<p>包含bootfs（/boot）内容的文件系统服务（初始的bootfs映像包含用户空间系统需要运行的所有内容:</p>
+<ul>
+<li>可执行文件</li>
+<li>共享库和数据文件（包括设备驱动程序或更高级的文件系统的实现）</li>
+</ul>
+</li>
+<li>
+<p>从bootfs加载的加载程序服务</p>
+</li>
+<li>
+<p>bin/component_manager</p>
+</li>
+<li>
+<p>sh / device_manager</p>
+</li>
+</ul>
 <h2 id="用户程序的组成"><a class="header" href="#用户程序的组成">用户程序的组成</a></h2>
 <blockquote>
 <p>内核不直接参与用户程序的加载工作（第一个进程除外）</p>
@@ -2299,22 +2525,188 @@ impl PageTableTrait for PageTable {
 <p>内存地址空间组成：Program, Stack, vDSO, Dylibs</p>
 <p>通过 Channel 传递启动信息和句柄</p>
 </blockquote>
-<h2 id="加载-elf-文件"><a class="header" href="#加载-elf-文件">加载 ELF 文件</a></h2>
-<blockquote>
-<p>简单介绍 ELF 文件的组成结构</p>
-<p>实现 VmarExt::load_from_elf 函数</p>
-</blockquote>
 <h2 id="系统调用的跳板vdso"><a class="header" href="#系统调用的跳板vdso">系统调用的跳板：vDSO</a></h2>
+<h4 id="介绍-vdso-的作用"><a class="header" href="#介绍-vdso-的作用">介绍 vDSO 的作用</a></h4>
+<p>vDSO（virtual Dynamic Shared Object），Zircon vDSO 是 Zircon 内核访问系统调用的唯一方法(作为系统调用的跳板)。它之所以是虚拟的，是因为它不是从文件系统中的ELF文件加载的，而是由内核直接提供的vDSO镜像。</p>
+<!-- Zircon vDSO是访问Zircon系统调用的唯一手段。vDSO表示虚拟动态共享对象。(动态共享对象是一个术语，用于ELF格式的共享库。)它是虚拟的，因为它不是从文件系统中的ELF文件加载的。相反，vDSO映像由内核直接提供。 -->
 <blockquote>
-<p>介绍 vDSO 的作用</p>
-<p>如何修改 vDSO 源码（libzircon）将 syscall 改为函数调用</p>
-<p>加载 vDSO 时修改 vDSO 代码段，填入跳转地址</p>
+<p>zCore/src/main.rs</p>
 </blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">#[cfg(feature = &quot;zircon&quot;)]
+fn main(ramfs_data: &amp;[u8], cmdline: &amp;str) {
+    use zircon_loader::{run_userboot, Images};
+    let images = Images::&lt;&amp;[u8]&gt; {
+        userboot: include_bytes!(&quot;../../prebuilt/zircon/x64/userboot.so&quot;),
+        vdso: include_bytes!(&quot;../../prebuilt/zircon/x64/libzircon.so&quot;),
+        zbi: ramfs_data,
+    };
+    let _proc = run_userboot(&amp;images, cmdline);
+    run();
+}
+</code></pre></pre>
+<p>它是一个用户态运行的代码，被封装成<code>prebuilt/zircon/x64/libzircon.so</code>文件。这个.so 文件装载不是放在文件系统中，而是由内核提供。它被整合在内核image中。</p>
+<p>vDSO映像在编译时嵌入到内核中。内核将它作为只读VMO公开给用户空间。内核启动时，会通过计算得到它所在的物理页。当<code>program loader</code>设置了一个新进程后，使该进程能够进行系统调用的唯一方法是：<code>program loader</code>在新进程的第一个线程开始运行之前，将vDSO映射到新进程的虚拟地址空间（地址随机）。因此，在启动其他能够进行系统调用的进程的每个进程自己本身都必须能够访问vDSO的VMO。</p>
+<blockquote>
+<p>zircon-loader/src/lib.rs#line167</p>
+</blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    proc.start(&amp;thread, entry, sp, Some(handle), 0, thread_fn)
+        .expect(&quot;failed to start main thread&quot;);
+    proc
+<span class="boring">}
+</span></code></pre></pre>
+<blockquote>
+<p>zircon-object/src/task/process.rs#line189</p>
+</blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    thread.start(entry, stack, handle_value as usize, arg2, thread_fn)
+<span class="boring">}
+</span></code></pre></pre>
+<p>vDSO被映射到新进程的同时会将映像的<code>base address</code>通过<code>arg2</code>参数传递给新进程中的第一个线程。通过这个地址，可以在内存中找到ELF的文件头，该文件头指向可用于查找系统调用符号名的其他ELF程序模块。</p>
+<h4 id="如何修改-vdso-源码libzircon将-syscall-改为函数调用"><a class="header" href="#如何修改-vdso-源码libzircon将-syscall-改为函数调用">如何修改 vDSO 源码（libzircon）将 syscall 改为函数调用</a></h4>
+<h5 id="有关代码"><a class="header" href="#有关代码">有关代码</a></h5>
+<ul>
+<li>参考仓库<a href="https://github.com/PanQL/zircon/blob/master/README.md">README.MD</a>
+<blockquote>
+<p>···解析代码依赖的compile_commands.json将会随build过程生成到<strong>out</strong>文件夹···</p>
+</blockquote>
+</li>
+</ul>
+<h5 id="如何生成imgsvdsozbi"><a class="header" href="#如何生成imgsvdsozbi">如何生成imgs(VDSO,ZBI)</a></h5>
+<ol>
+<li>
+<p>clone Zircon代码仓库（从fuchsia官方目录中分离出来的zircon代码）：</p>
+<pre><code class="language-shell">$ git clone https://github.com/PanQL/zircon.git
+</code></pre>
+</li>
+<li>
+<p>关于Zircon的编译运行<br />
+为了减小仓库体积，我们将prebuilt目录进行了大幅调整;因此运行之前请下载google预编译好的clang，解压后放到某个权限合适的位置，然后在代码的<a href="https://github.com/PanQL/zircon/blob/master/public/gn/toolchain/clang.gni#L16">这个位置</a>将<strong>绝对目录</strong>修改为对应位置。 
+clang下载链接:</p>
+<ul>
+<li><a href="https://cloud.tsinghua.edu.cn/d/7ab1d87feecd4b2cb3d8/">云盘下载链接</a></li>
+<li>官方CIPD包下载链接如下
+<ul>
+<li><a href="https://chrome-infra-packages.appspot.com/p/fuchsia/clang/linux-amd64/+/oEsFSe99FkcDKVxZkAY0MKi6C-yYOan1m-QL45N33W8C">Linux</a></li>
+<li><a href="https://chrome-infra-packages.appspot.com/p/fuchsia/clang/mac-amd64/+/Lc64-GTi4kihzkCnW8Vaa80TWTnMpZY0Fy6AqChmqvcC">Mac</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>当前只支持在Mac OS及Linux x64上进行编译。<br />
+默认的<code>make run</code>和<code>make build</code>是针对x64架构的，如果希望编译运行arm架构的zircon，那么需要：</p>
+<ul>
+<li>修改out/args.gn中的<code>legacy-image-x64</code>为<code>legacy-image-arm64</code></li>
+<li>重新<code>make build</code></li>
+<li><code>make runarm</code></li>
+</ul>
+</li>
+<li>
+<p>配合zCore中的有关脚本与补丁文件</p>
+<ul>
+<li>scripts/gen-prebuilt.sh</li>
+<li>scripts/zircon-libos.patch</li>
+</ul>
+<ul>
+<li>https://github.com/PanQL/zircon/blob/master/system/ulib/zircon/syscall-entry.h</li>
+<li>https://github.com/PanQL/zircon/blob/master/system/ulib/zircon/syscalls-x86-64.S</li>
+<li>zircon-loader/src/lib.rs#line 83-93</li>
+</ul>
+</li>
+</ol>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>        #[cfg(feature = &quot;std&quot;)]
+        {
+            let offset = elf
+                .get_symbol_address(&quot;zcore_syscall_entry&quot;)
+                .expect(&quot;failed to locate syscall entry&quot;) as usize;
+            let syscall_entry = &amp;(kernel_hal_unix::syscall_entry as usize).to_ne_bytes();
+            // fill syscall entry x3
+            vdso_vmo.write(offset, syscall_entry).unwrap();
+            vdso_vmo.write(offset + 8, syscall_entry).unwrap();
+            vdso_vmo.write(offset + 16, syscall_entry).unwrap();
+        }
+
+<span class="boring">}
+</span></code></pre></pre>
+<!-- 当vsdo 用svc 指令后，这时CPU exception进入内核，到 expections.S 中的 sync_exception 宏（不同ELx， sync_exception的参数不一样）。然后这个 sync_exception 宏中先做一些现场保存的工作， 然后jump到 arm64_syscall_dispatcher 宏。
+
+进入arm64_syscall_dispatcher宏后， 先做一些syscall number检查，然后syscall number 跳到 call_wrapper_table 函数表中相应index项的函数中去（call_wrapper_table 像一个一维的函数指针的数组，syscall number 作index，jump到相应的wrapper syscall function 函数中去）。 -->
+<h4 id="加载-vdso-时修改-vdso-代码段填入跳转地址"><a class="header" href="#加载-vdso-时修改-vdso-代码段填入跳转地址">加载 vDSO 时修改 vDSO 代码段，填入跳转地址</a></h4>
 <h2 id="第一个用户程序userboot"><a class="header" href="#第一个用户程序userboot">第一个用户程序：userboot</a></h2>
 <blockquote>
 <p>实现 zircon-loader 中的 run_userboot 函数</p>
 <p>能够进入用户态并在第一个系统调用时跳转回来</p>
 </blockquote>
+<h4 id="从bootfs加载第一个真正意义上的用户程序"><a class="header" href="#从bootfs加载第一个真正意义上的用户程序">从<code>bootfs</code>加载第一个真正意义上的用户程序。</a></h4>
+<p>主要相关代码：</p>
+<blockquote>
+<p>zircon-loader/src/lib.rs
+zircon-object/src/util/elf_loader.rs</p>
+</blockquote>
+<p>当<code>userboot</code>解压完毕<code>ZBI</code>中的<code>bootfs</code>后，<code>userboot</code>将继续从<code>bootfs</code>载入程序文件运行。</p>
+<p>Zircon中具体的实现流程如下：</p>
+<ol>
+<li>
+<p><code>userboot</code>检查从内核接收到的环境字符串，这些字符串代表了一定的内核命令行。</p>
+<blockquote>
+<p>zircon-loader/src/main.rs</p>
+</blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">#[async_std::main]
+async fn main() {
+    kernel_hal_unix::init();
+    init_logger();
+
+    let opt = Opt::from_args();
+    let images = open_images(&amp;opt.prebuilt_path).expect(&quot;failed to read file&quot;);
+
+    let proc: Arc&lt;dyn KernelObject&gt; = run_userboot(&amp;images, &amp;opt.cmdline);
+    drop(images);
+
+    proc.wait_signal(Signal::USER_SIGNAL_0).await;
+}
+</code></pre></pre>
+<p>在Zircon中：</p>
+<ul>
+<li>若该字符串内容为<code>userboot=file</code>，那么该<code>file</code>将作为第一个真正的用户进程加载。</li>
+<li>若没有这样的选项，则<code>userboot</code>将选择的默认文为<code>bin/bootsvc</code>。该文件可在<code>bootfs</code>中找到。</li>
+</ul>
+<p>而在zCore的实现中：</p>
+<ul>
+<li>..</li>
+</ul>
+</li>
+<li>
+<p>为了加载上述文件，userboot实现了一个功能齐全的ELF程序加载器
+<code>zircon_object::util::elf_loader::load_from_elf</code></p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    // userboot
+    let (entry, userboot_size) = {
+        let elf = ElfFile::new(images.userboot.as_ref()).unwrap();
+        let size = elf.load_segment_size();
+        let vmar = vmar
+            .allocate(None, size, VmarFlags::CAN_MAP_RXW, PAGE_SIZE)
+            .unwrap();
+        vmar.load_from_elf(&amp;elf).unwrap();
+        (vmar.addr() + elf.header.pt2.entry_point() as usize, size)
+    };
+<span class="boring">}
+</span></code></pre></pre>
+</li>
+<li>
+<p>然后userboot以随机地址加载vDSO。它使用标准约定启动新进程，并给它传递一个channel句柄和vDSO基址。
+<code>zircon_object::util::elf_loader::map_from_elf</code></p>
+</li>
+</ol>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="上下文切换"><a class="header" href="#上下文切换">上下文切换</a></h1>
 <blockquote>
 <p>本节介绍 trapframe-rs 中 <a href="https://github.com/rcore-os/trapframe-rs/blob/master/src/arch/x86_64/fncall.rs">fncall.rs</a> 的魔法实现</p>
@@ -2322,8 +2714,90 @@ impl PageTableTrait for PageTable {
 <h2 id="保存和恢复通用寄存器"><a class="header" href="#保存和恢复通用寄存器">保存和恢复通用寄存器</a></h2>
 <blockquote>
 <p>定义 UserContext 结构体</p>
+</blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct UserContext {
+    pub general: GeneralRegs,
+    pub trap_num: usize,
+    pub error_code: usize,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct GeneralRegs {
+    pub rax: usize,
+    pub rbx: usize,
+    pub rcx: usize,
+    pub rdx: usize,
+    pub rsi: usize,
+    pub rdi: usize,
+    pub rbp: usize,
+    pub rsp: usize,
+    pub r8: usize,
+    pub r9: usize,
+    pub r10: usize,
+    pub r11: usize,
+    pub r12: usize,
+    pub r13: usize,
+    pub r14: usize,
+    pub r15: usize,
+    pub rip: usize,
+    pub rflags: usize,
+    pub fsbase: usize,
+    pub gsbase: usize,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p><code>Usercontext</code>保存了用户执行的上下文，包括跳转到用户态之后程序的第一条指令的地址，如果程序首次从内核态进入用户态执行，则rip指向用户进程的第一条指令的地址。</p>
+<blockquote>
 <p>保存 callee-saved 寄存器到栈上，恢复 UserContext 寄存器，进入用户态，反之亦然</p>
 </blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>syscall_fn_return:
+<span class="boring">    save callee-saved registers
+</span>    push r15
+    push r14
+    push r13
+    push r12
+    push rbp
+    push rbx
+
+    push rdi
+    SAVE_KERNEL_STACK
+    mov rsp, rdi
+
+    POP_USER_FSBASE
+
+<span class="boring">    pop trap frame (struct GeneralRegs)
+</span>    pop rax
+    pop rbx
+    pop rcx
+    pop rdx
+    pop rsi
+    pop rdi
+    pop rbp
+    pop r8                  # skip rsp
+    pop r8
+    pop r9
+    pop r10
+    pop r11
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+    pop r11                 # r11 = rip. FIXME: don't overwrite r11!
+    popfq                   # pop rflags
+    mov rsp, [rsp - 8*11]   # restore rsp
+    jmp r11                 # restore rip
+<span class="boring">}
+</span></code></pre></pre>
+<p>弹出的寄存器恰好对应了GeneralRegs的结构，通过在rust的unsafe代码块中调用<code>syscall_fn_return</code>函数，并且传递<code>Usercontext</code>结构体的指针到rdi中，可以创造出程序进入用户态的运行环境。</p>
 <h2 id="找回内核上下文线程局部存储-与-fs-寄存器"><a class="header" href="#找回内核上下文线程局部存储-与-fs-寄存器">找回内核上下文：线程局部存储 与 FS 寄存器</a></h2>
 <blockquote>
 <p>在用户程序跳转回内核代码的那一刻，如何在不破坏用户寄存器的情况下切换回内核栈？</p>
@@ -2334,24 +2808,402 @@ impl PageTableTrait for PageTable {
 <blockquote>
 <p>编写单元测试验证上述过程</p>
 </blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[cfg(test)]
+mod tests {
+    use crate::*;
+
+    #[cfg(target_os = &quot;macos&quot;)]
+    global_asm!(&quot;.set _dump_registers, dump_registers&quot;);
+
+    // Mock user program to dump registers at stack.
+    global_asm!(
+        r#&quot;
+dump_registers:
+    push r15
+    push r14
+    push r13
+    push r12
+    push r11
+    push r10
+    push r9
+    push r8
+    push rsp
+    push rbp
+    push rdi
+    push rsi
+    push rdx
+    push rcx
+    push rbx
+    push rax
+
+    add rax, 10
+    add rbx, 10
+    add rcx, 10
+    add rdx, 10
+    add rsi, 10
+    add rdi, 10
+    add rbp, 10
+    add r8, 10
+    add r9, 10
+    add r10, 10
+    add r11, 10
+    add r12, 10
+    add r13, 10
+    add r14, 10
+    add r15, 10
+
+    call syscall_fn_entry
+&quot;#
+    );
+
+    #[test]
+    fn run_fncall() {
+        extern &quot;sysv64&quot; {
+            fn dump_registers();
+        }
+        let mut stack = [0u8; 0x1000];
+        let mut cx = UserContext {
+            general: GeneralRegs {
+                rax: 0,
+                rbx: 1,
+                rcx: 2,
+                rdx: 3,
+                rsi: 4,
+                rdi: 5,
+                rbp: 6,
+                rsp: stack.as_mut_ptr() as usize + 0x1000,
+                r8: 8,
+                r9: 9,
+                r10: 10,
+                r11: 11,
+                r12: 12,
+                r13: 13,
+                r14: 14,
+                r15: 15,
+                rip: dump_registers as usize,
+                rflags: 0,
+                fsbase: 0, // don't set to non-zero garbage value
+                gsbase: 0,
+            },
+            trap_num: 0,
+            error_code: 0,
+        };
+        cx.run_fncall();
+        // check restored registers
+        let general = unsafe { *(cx.general.rsp as *const GeneralRegs) };
+        assert_eq!(
+            general,
+            GeneralRegs {
+                rax: 0,
+                rbx: 1,
+                rcx: 2,
+                rdx: 3,
+                rsi: 4,
+                rdi: 5,
+                rbp: 6,
+                // skip rsp
+                r8: 8,
+                r9: 9,
+                r10: 10,
+                // skip r11
+                r12: 12,
+                r13: 13,
+                r14: 14,
+                r15: 15,
+                ..general
+            }
+        );
+        // check saved registers
+        assert_eq!(
+            cx.general,
+            GeneralRegs {
+                rax: 10,
+                rbx: 11,
+                rcx: 12,
+                rdx: 13,
+                rsi: 14,
+                rdi: 15,
+                rbp: 16,
+                // skip rsp
+                r8: 18,
+                r9: 19,
+                r10: 20,
+                // skip r11
+                r12: 22,
+                r13: 23,
+                r14: 24,
+                r15: 25,
+                ..cx.general
+            }
+        );
+        assert_eq!(cx.trap_num, 0x100);
+        assert_eq!(cx.error_code, 0);
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
 <h2 id="macos-的麻烦动态二进制修改"><a class="header" href="#macos-的麻烦动态二进制修改">macOS 的麻烦：动态二进制修改</a></h2>
 <blockquote>
 <p>由于 macOS 用户程序无法修改 fs 寄存器，当运行相关指令时会访问非法内存地址触发段错误。</p>
 <p>我们需要实现段错误信号处理函数，并在其中动态修改用户程序指令，将 fs 改为 gs。</p>
 </blockquote>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="系统调用"><a class="header" href="#系统调用">系统调用</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="zircon-系统调用"><a class="header" href="#zircon-系统调用">Zircon 系统调用</a></h1>
+<blockquote>
+<p>目录位于<code>zCore/zircon-syscall</code></p>
+</blockquote>
+<p>从userboot运行起来到实现调用syscall的简要函数调用流程如下：</p>
+<ol>
+<li>run_userboot    -&gt;</li>
+<li>proc.start      -&gt;</li>
+<li>thread_fn       -&gt;</li>
+<li>new_thread      -&gt; </li>
+<li>handle_syscall  -&gt; </li>
+<li>syscall         -&gt;</li>
+<li>sys_handle_close()   (举例某一具体的syscall运行，该syscall可用于实现<code>close a handle</code>的功能)</li>
+</ol>
 <h2 id="获取系统调用参数"><a class="header" href="#获取系统调用参数">获取系统调用参数</a></h2>
-<blockquote>
 <p>从寄存器中获取参数</p>
+<blockquote>
+<p>不同的计算机体系结构获得参数的方式不同</p>
+<p>以下区分<code>x86_64</code>以及<code>aarch64</code></p>
 </blockquote>
+<p>调用syscall需要从寄存器收集两种参数：<br />
++ <code>num</code> : 系统调用号<br />
++ <code>args</code> : 具体某一系统调用的参数</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>async fn handle_syscall(thread: &amp;CurrentThread, regs: &amp;mut GeneralRegs) {
+    #[cfg(target_arch = &quot;x86_64&quot;)]
+    let num = regs.rax as u32;
+    #[cfg(target_arch = &quot;aarch64&quot;)]
+    let num = regs.x16 as u32;
+    // LibOS: Function call ABI
+    #[cfg(feature = &quot;std&quot;)]
+    #[cfg(target_arch = &quot;x86_64&quot;)]
+    let args = unsafe {
+        let a6 = (regs.rsp as *const usize).read();
+        let a7 = (regs.rsp as *const usize).add(1).read();
+        [
+            regs.rdi, regs.rsi, regs.rdx, regs.rcx, regs.r8, regs.r9, a6, a7,
+        ]
+    };
+    // RealOS: Zircon syscall ABI
+    #[cfg(not(feature = &quot;std&quot;))]
+    #[cfg(target_arch = &quot;x86_64&quot;)]
+    let args = [
+        regs.rdi, regs.rsi, regs.rdx, regs.r10, regs.r8, regs.r9, regs.r12, regs.r13,
+    ];
+    // ARM64
+    #[cfg(target_arch = &quot;aarch64&quot;)]
+    let args = [
+        regs.x0, regs.x1, regs.x2, regs.x3, regs.x4, regs.x5, regs.x6, regs.x7,
+    ];
+    let mut syscall = Syscall {
+        regs,
+        thread,
+        thread_fn,
+    };
+    let ret = syscall.syscall(num, args).await as usize;
+    #[cfg(target_arch = &quot;x86_64&quot;)]
+    {
+        syscall.regs.rax = ret;
+    }
+    #[cfg(target_arch = &quot;aarch64&quot;)]
+    {
+        syscall.regs.x0 = ret;
+    }
+}
+
+<span class="boring">}
+</span></code></pre></pre>
 <h2 id="系统调用上下文与处理函数"><a class="header" href="#系统调用上下文与处理函数">系统调用上下文与处理函数</a></h2>
+<h3 id="定义-syscall-结构体"><a class="header" href="#定义-syscall-结构体">定义 Syscall 结构体</a></h3>
+<p>保存上下文信息</p>
 <blockquote>
-<p>定义 Syscall 结构体，实现 syscall 函数</p>
+<p>zCore/zircon-syscall/src/lib.rs#L52</p>
 </blockquote>
-<h2 id="实现第一个系统调用"><a class="header" href="#实现第一个系统调用">实现第一个系统调用</a></h2>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// 系统调用的结构(存储关于创建系统调用的信息)
+pub struct Syscall&lt;'a&gt; {
+    /// store the regs statues
+    pub regs: &amp;'a mut GeneralRegs,
+    /// the thread making a syscall
+    pub thread: &amp;'a CurrentThread,
+    /// new thread function
+    pub thread_fn: ThreadFn,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="实现-syscall-函数"><a class="header" href="#实现-syscall-函数">实现 syscall 函数</a></h3>
 <blockquote>
-<p>实现 sys_channel_read 和 sys_debuglog_write</p>
+<p>zCore/zircon-syscall/src/lib.rs#L59</p>
 </blockquote>
+<ol>
+<li>检查系统调用号<code>sys_type</code>是否合法</li>
+<li>获取传递给具体某一系统调用的参数<code>args</code></li>
+<li>若syscall函数输入的系统调用号合法，则进一步根据系统调用号匹配具体系统调用处理函数</li>
+<li>传入对应系统调用所需的参数，并运行之</li>
+<li>检查系统调用的返回值<code>ret</code>是否符合预期 </li>
+</ol>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    pub async fn syscall(&amp;mut self, num: u32, args: [usize; 8]) -&gt; isize {
+
+        ...
+
+        // 1. 检查系统调用号`sys_type`是否合法
+        let sys_type = match Sys::try_from(num) {
+            Ok(t) =&gt; t,
+            Err(_) =&gt; {
+                error!(&quot;invalid syscall number: {}&quot;, num);
+                return ZxError::INVALID_ARGS as _;
+            }
+        };
+
+        ...
+
+        // 2. 获取传递给具体系统调用参数
+        let [a0, a1, a2, a3, a4, a5, a6, a7] = args;
+
+        // 3. 若syscall函数输入的系统调用号合法
+        //    则进一步根据系统调用号匹配具体系统调用处理函数
+
+        let ret = match sys_type {
+            
+            // 4. 传入对应系统调用所需的参数，并运行之
+            Sys::HANDLE_CLOSE =&gt; self.sys_handle_close(a0 as _),
+            Sys::HANDLE_CLOSE_MANY =&gt; self.sys_handle_close_many(a0.into(), a1 as _),
+            Sys::HANDLE_DUPLICATE =&gt; self.sys_handle_duplicate(a0 as _, a1 as _, a2.into()),
+            Sys::HANDLE_REPLACE =&gt; self.sys_handle_replace(a0 as _, a1 as _, a2.into()),
+            
+            ...
+            // 更多系统调用匹配的分支
+            Sys::CLOCK_GET =&gt; self.sys_clock_get(a0 as _, a1.into()),
+            Sys::CLOCK_READ =&gt; self.sys_clock_read(a0 as _, a1.into()),
+            Sys::CLOCK_ADJUST =&gt; self.sys_clock_adjust(a0 as _, a1 as _, a2 as _),
+            Sys::CLOCK_UPDATE =&gt; self.sys_clock_update(a0 as _, a1 as _, a2.into()),
+            Sys::TIMER_CREATE =&gt; self.sys_timer_create(a0 as _, a1 as _, a2.into()),
+
+            ...
+        };
+
+        ...
+
+        // 5. 检查系统调用的返回值`ret`是否符合预期
+        match ret {
+            Ok(_) =&gt; 0,
+            Err(err) =&gt; err as isize,
+        }
+    }
+<span class="boring">}
+</span></code></pre></pre>
+<p>系统调用号匹配信息位于</p>
+<blockquote>
+<p>zCore/zircon-syscall/src/consts.rs#L8</p>
+</blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum SyscallType {
+    BTI_CREATE = 0,
+    BTI_PIN = 1,
+    BTI_RELEASE_QUARANTINE = 2,
+    CHANNEL_CREATE = 3,
+    CHANNEL_READ = 4,
+    CHANNEL_READ_ETC = 5,
+    CHANNEL_WRITE = 6,
+    CHANNEL_WRITE_ETC = 7,
+    CHANNEL_CALL_NORETRY = 8,
+    CHANNEL_CALL_FINISH = 9,
+    CLOCK_GET = 10,
+    CLOCK_ADJUST = 11,
+    CLOCK_GET_MONOTONIC_VIA_KERNEL = 12,
+
+    ...
+
+    VMO_CREATE_CONTIGUOUS = 165,
+    VMO_CREATE_PHYSICAL = 166,
+    COUNT = 167,
+    FUTEX_WAKE_HANDLE_CLOSE_THREAD_EXIT = 200,
+    VMAR_UNMAP_HANDLE_CLOSE_THREAD_EXIT = 201,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="简单实现一个系统调用处理函数sys_clock_adjust为例"><a class="header" href="#简单实现一个系统调用处理函数sys_clock_adjust为例">简单实现一个系统调用处理函数（<code>sys_clock_adjust</code>为例）</a></h3>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    pub fn sys_clock_adjust(&amp;self, resource: HandleValue, clock_id: u32, offset: u64) -&gt; ZxResult {
+
+    // 1. 记录log信息：info!()
+        info!(
+            &quot;clock.adjust: resource={:#x?}, id={:#x}, offset={:#x}&quot;,
+            resource, clock_id, offset
+        );
+
+    // 2. 检查参数合法性（需要归纳出每个系统调用的参数值的范围）
+    // missing now
+
+    // 3. 获取当前进程对象
+        let proc = self.thread.proc();
+
+    // 4. 根据句柄从进程中获取对象
+        proc.get_object::&lt;Resource&gt;(resource)?
+            .validate(ResourceKind::ROOT)?;
+        match clock_id {
+            ZX_CLOCK_MONOTONIC =&gt; Err(ZxError::ACCESS_DENIED),
+
+    // 5. 调用内河对象API执行具体功能
+            ZX_CLOCK_UTC =&gt; {
+                UTC_OFFSET.store(offset, Ordering::Relaxed);
+                Ok(())
+            }
+            _ =&gt; Err(ZxError::INVALID_ARGS),
+        }
+    }
+<span class="boring">}
+</span></code></pre></pre>
+<blockquote>
+<p>一个现有不完全的系统调用实现<code>sys_clock_get</code></p>
+</blockquote>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    /// Acquire the current time.  
+    ///   
+    /// + Returns the current time of clock_id via `time`.  
+    /// + Returns whether `clock_id` was valid.  
+    pub fn sys_clock_get(&amp;self, clock_id: u32, mut time: UserOutPtr&lt;u64&gt;) -&gt; ZxResult {
+        // 记录log信息：info!()
+        info!(&quot;clock.get: id={}&quot;, clock_id); 
+        // 检查参数合法性
+        // miss
+
+        match clock_id {
+            ZX_CLOCK_MONOTONIC =&gt; {
+                time.write(timer_now().as_nanos() as u64)?;
+                Ok(())
+            }
+            ZX_CLOCK_UTC =&gt; {
+                time.write(timer_now().as_nanos() as u64 + UTC_OFFSET.load(Ordering::Relaxed))?;
+                Ok(())
+            }
+            ZX_CLOCK_THREAD =&gt; {
+                time.write(self.thread.get_time())?;
+                Ok(())
+            }
+            _ =&gt; Err(ZxError::NOT_SUPPORTED),
+        }
+    }
+<span class="boring">}
+</span></code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="信号和等待"><a class="header" href="#信号和等待">信号和等待</a></h1>
 <h2 id="信号-1"><a class="header" href="#信号-1">信号</a></h2>
 <p>对象可能有多达 32 个信号（由 zx_signals <em>t 类型和 ZX</em> <strong>SIGNAL</strong> 定义表示），它们表示有关其当前状态的一条信息。例如，通道和套接字可能是 READABLE 或 WRITABLE 的。进程或线程可能会被终止。等等。</p>
